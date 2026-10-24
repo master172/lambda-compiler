@@ -25,7 +25,7 @@ impl LexState {
         LexState {
             start: 0,
             current: 0,
-            end: line.len(),
+            end: line.chars().count(),
         }
     }
 }
@@ -43,6 +43,8 @@ pub fn lex(file: File) -> Result<Vec<Token>, LexErrors> {
             Err(e) => return Err(e),
         };
     }
+
+    returning_token.push(Token::EOF);
 
     Ok(returning_token)
 }
@@ -99,13 +101,7 @@ pub fn lex_line(line: &str, line_num: usize) -> Result<Vec<Token>, LexErrors> {
             },
         }
     }
-    returning_token.push(Token::EOF {
-        source: SourceLocation::new(
-            line_num,
-            lex_state.start,
-            lex_state.current - lex_state.start,
-        ),
-    });
+
     Ok(returning_token)
 }
 
@@ -117,7 +113,7 @@ fn lex_identifier(
     state.start = state.current;
     while state.current < state.end {
         let c = char_vec[state.current];
-        if c.is_whitespace() || c == '.' {
+        if c.is_whitespace() || matches!(c, '.' | '(' | ')') {
             break;
         }
         state.current += 1;

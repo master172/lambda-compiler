@@ -49,9 +49,7 @@ pub enum Token {
         source: SourceLocation,
         attribute: String,
     },
-    EOF {
-        source: SourceLocation,
-    },
+    EOF,
 }
 
 pub enum LexErrors {
