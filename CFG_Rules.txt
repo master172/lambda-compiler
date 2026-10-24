@@ -1,0 +1,15 @@
+our context free grammer rules
+
+program ::= statemet* EOF
+
+statement ::= definition ";" | expression ";"
+
+definition ::= IDENTIFIER "=" expression
+
+expression ::= abstraction | application
+
+abstraction ::= "lambda" IDENTIFIER "." expression
+
+application ::= atom atom*
+
+atom ::= IDENTIFIER | "(" expression ")"

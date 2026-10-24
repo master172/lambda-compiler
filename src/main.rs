@@ -10,6 +10,7 @@ use crate::{
 
 mod arguement_processor;
 mod lexer;
+mod parser;
 
 fn main() {
     // gets the arguement packet from the args parser
