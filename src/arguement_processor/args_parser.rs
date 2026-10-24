@@ -26,26 +26,36 @@ impl Display for ArgsError {
 
 pub fn create_args_packet() -> Result<ArgsPacket, ArgsError> {
     let mut args = env::args();
+
+    //get the current dir if somehow it is empty return an error
     let path = env::current_dir().map_err(|_| NoDirectory)?;
     let path_string = match path.into_string() {
         Ok(val) => val,
         Err(_) => return Err(InvalidDir),
     };
-    let mut source_packet: Option<ArgsPacket> = None;
+
+    let mut source_packet: ArgsPacket = ArgsPacket {
+        source: String::new(),
+    };
+
     while let Some(value) = args.next() {
+        // go over each space sperated value in the env args and modify source packet values from it
+        // since we use iterators it is easy to use parameter specifiers and actual values
         if value == "-s" {
+            // immediately get the next arguement as the source file path from the current directory
             let source_file: String = match args.next() {
                 Some(val) => val,
                 None => return Err(NoSourceProvided),
             };
 
-            source_packet = Some(ArgsPacket {
-                source: format!("{path_string}\\{source_file}"),
-            });
+            source_packet.source = format!("{path_string}\\{source_file}");
         }
     }
-    if source_packet.is_some() {
-        return Ok(source_packet.unwrap());
+
+    //validate if the source is proper if not immediately return an error
+    if source_packet.source.is_empty() {
+        return Err(InvalidArguements);
     }
-    Err(InvalidArguements)
+
+    return Ok(source_packet);
 }

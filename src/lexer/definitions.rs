@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use crate::lexer::definitions::LexErrors::{FailedToProcessLine, InvalidIdentifier};
 
+// the members of source location are kept private to prevent accidental mutation
 #[derive(Debug)]
 pub struct SourceLocation {
     line: usize,
@@ -9,6 +10,7 @@ pub struct SourceLocation {
     size: usize,
 }
 
+// Source location members are only accessed through functions to prevent state corruption even accidentally
 impl SourceLocation {
     pub fn new(line: usize, column: usize, size: usize) -> Self {
         Self { line, column, size }
@@ -48,6 +50,12 @@ pub enum Token {
     Var {
         source: SourceLocation,
         attribute: String,
+    },
+    Assignment {
+        source: SourceLocation,
+    },
+    SemiColon {
+        source: SourceLocation,
     },
     EOF,
 }

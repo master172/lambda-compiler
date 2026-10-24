@@ -10,9 +10,14 @@ pub fn is_valid_identifier_name(name: &str) -> bool {
         _ => return false,
     }
 
+    //check all the remaining characters
     if !chars.all(|c| c.is_alphanumeric() || c == '_') {
         return false;
     }
 
     true
+}
+
+pub fn is_identifier_terminator(c: char) -> bool {
+    c.is_whitespace() || matches!(c, '.' | '(' | ')' | ';' | '=')
 }

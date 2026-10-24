@@ -18,12 +18,14 @@ fn main() {
         Ok(val) => val,
         Err(err) => panic!("compiler exited with error: {}", err),
     };
-    println!("{}", args_packet.source);
+
     // opens the relavent source file
     let file: File = match packet_processor::get_source_file(&args_packet) {
         Ok(val) => val,
         Err(err) => panic!("failed to open file: {}", err),
     };
+
+    //tries to get a stream of tokens from the lexer
     let tokens: Vec<Token> = match lexer::lex(file) {
         Ok(val) => val,
         Err(e) => panic!("lexer failed with error: {e}"),
