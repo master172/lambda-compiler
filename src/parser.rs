@@ -4,7 +4,6 @@ use crate::{
         definitions::{
             AbstractionASTNode, ApplicationASTNode, AtomicASTNode, DefinitionASTNode,
             ExpressionASTNode,
-            Expressions::{Abstraction, Application},
             ParserErrors::{self, InvalidStatmentInitalizer},
             ProgramASTNode, StatementASTNode,
             Statemets::{Definition, StatementExpression},
