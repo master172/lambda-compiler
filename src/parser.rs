@@ -1,12 +1,13 @@
 use crate::{
-    lexer::definitions::Token::{self, EOF, Lambda, LeftParen, Var},
+    lexer::definitions::Token::{self, Assignment, EOF, Lambda, LeftParen, Var},
     parser::{
         definitions::{
-            AbstractionASTNode, DefinitionASTNode, ExpressionASTNode,
-            Expressions::Abstraction,
+            AbstractionASTNode, ApplicationASTNode, AtomicASTNode, DefinitionASTNode,
+            ExpressionASTNode,
+            Expressions::{Abstraction, Application},
             ParserErrors::{self, InvalidStatmentInitalizer},
             ProgramASTNode, StatementASTNode,
-            Statemets::StatementExpression,
+            Statemets::{Definition, StatementExpression},
         },
         state::ParserState,
     },
@@ -43,20 +44,46 @@ fn parse_statement_node(state: &mut ParserState) -> Result<Option<StatementASTNo
     match token {
         EOF => return Ok(None),
         Lambda { .. } => {
-            let abstraction: AbstractionASTNode = parse_abstraction_node(state)?;
-            let expression: ExpressionASTNode = ExpressionASTNode {
-                expression: Abstraction(abstraction),
-            };
+            let expression: ExpressionASTNode = parse_expression_node(state)?;
             let statement: StatementASTNode = StatementASTNode {
                 statement: StatementExpression(expression),
             };
             return Ok(Some(statement));
         }
-        Var { source, attribute } => {
-            todo!()
+        Var { .. } => {
+            let token = match state.peek_n(1) {
+                Some(val) => val,
+                None => {
+                    let expression: ExpressionASTNode = parse_expression_node(state)?;
+                    let statement: StatementASTNode = StatementASTNode {
+                        statement: StatementExpression(expression),
+                    };
+                    return Ok(Some(statement));
+                }
+            };
+            match token {
+                Assignment { .. } => {
+                    let definition: DefinitionASTNode = parse_defintion_node(state)?;
+                    let statement: StatementASTNode = StatementASTNode {
+                        statement: Definition(definition),
+                    };
+                    return Ok(Some(statement));
+                }
+                _ => {
+                    let expression: ExpressionASTNode = parse_expression_node(state)?;
+                    let statement: StatementASTNode = StatementASTNode {
+                        statement: StatementExpression(expression),
+                    };
+                    return Ok(Some(statement));
+                }
+            }
         }
-        LeftParen { source } => {
-            todo!()
+        LeftParen { .. } => {
+            let expression: ExpressionASTNode = parse_expression_node(state)?;
+            let statement: StatementASTNode = StatementASTNode {
+                statement: StatementExpression(expression),
+            };
+            return Ok(Some(statement));
         }
         _ => return Err(InvalidStatmentInitalizer),
     };
@@ -71,5 +98,13 @@ fn parse_expression_node(state: &mut ParserState) -> Result<ExpressionASTNode, P
 }
 
 fn parse_abstraction_node(state: &mut ParserState) -> Result<AbstractionASTNode, ParserErrors> {
+    todo!()
+}
+
+fn parse_application_node(state: &mut ParserState) -> Result<ApplicationASTNode, ParserErrors> {
+    todo!()
+}
+
+fn parse_atomic_node(state: &mut ParserState) -> Result<AtomicASTNode, ParserErrors> {
     todo!()
 }

@@ -21,7 +21,7 @@ pub struct ExpressionASTNode {
 }
 
 pub struct IdentifierASTNode {
-    name: String,
+    pub name: String,
 }
 
 pub enum Expressions {
@@ -30,15 +30,18 @@ pub enum Expressions {
 }
 
 pub struct AbstractionASTNode {
-    identifier: IdentifierASTNode,
-    expression: Box<Expressions>,
+    pub identifier: IdentifierASTNode,
+    pub expression: Box<Expressions>,
 }
 
 pub struct ApplicationASTNode {
-    left: Box<Atom>,
-    right: Vec<Box<Atom>>,
+    pub left: Box<AtomicASTNode>,
+    pub right: Vec<Box<AtomicASTNode>>,
 }
 
+pub struct AtomicASTNode {
+    pub atom: Atom,
+}
 pub enum Atom {
     Identifier(IdentifierASTNode),
     AtomicExpression(ExpressionASTNode),
@@ -47,5 +50,4 @@ pub enum Atom {
 pub enum ParserErrors {
     EOFReachedWithoutParsing,
     InvalidStatmentInitalizer,
-    ParseFailed,
 }
