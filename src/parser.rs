@@ -11,8 +11,7 @@ use crate::{
             ParserErrors::{
                 self, ExpectedAssignmentToken, ExpectedDotToken, ExpectedIdentiferToken,
                 ExpectedRightParenthesisToken, ExpectedSemiColon, InvalidAbstraction,
-                InvalidApplication, InvalidAtomic, InvalidDefinition, InvalidExpression,
-                InvalidStatmentInitalizer,
+                InvalidAtomic, InvalidDefinition, InvalidExpression, InvalidStatmentInitalizer,
             },
             ProgramASTNode, StatementASTNode,
             Statemets::{Definition, StatementExpression},

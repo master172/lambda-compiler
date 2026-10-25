@@ -3,19 +3,11 @@ use crate::lexer::definitions::Token;
 pub struct ParserState {
     tokens: Vec<Token>,
     current: usize,
-    start: usize,
-    end: usize,
 }
 
 impl ParserState {
     pub fn new(tokens: Vec<Token>) -> Self {
-        let token_len: usize = tokens.len();
-        return Self {
-            tokens,
-            current: 0,
-            start: 0,
-            end: token_len,
-        };
+        return Self { tokens, current: 0 };
     }
 
     pub fn peek(&mut self) -> Option<&Token> {
