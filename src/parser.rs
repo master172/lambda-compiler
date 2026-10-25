@@ -4,9 +4,12 @@ use crate::{
         definitions::{
             AbstractionASTNode, ApplicationASTNode,
             Atom::Identifier,
-            AtomicASTNode, DefinitionASTNode, ExpressionASTNode, IdentifierASTNode,
+            AtomicASTNode, DefinitionASTNode, ExpressionASTNode,
+            Expressions::{Abstraction, Application},
+            IdentifierASTNode,
             ParserErrors::{
-                self, ExpectedAssignmentToken, InvalidDefinition, InvalidExpression,
+                self, ExpectedAssignmentToken, ExpectedDotToken, ExpectedIdentiferToken,
+                InvalidAbstraction, InvalidDefinition, InvalidExpression,
                 InvalidStatmentInitalizer,
             },
             ProgramASTNode, StatementASTNode,
@@ -140,7 +143,36 @@ fn parse_expression_node(state: &mut ParserState) -> Result<ExpressionASTNode, P
 }
 
 fn parse_abstraction_node(state: &mut ParserState) -> Result<AbstractionASTNode, ParserErrors> {
-    todo!()
+    let lambda_token = state.advance();
+    match lambda_token {
+        Some(Lambda { .. }) => {}
+        _ => return Err(InvalidAbstraction),
+    };
+    let identifier = state.advance();
+    let identifier = match identifier {
+        Some(Var {
+            source: _source,
+            attribute,
+        }) => IdentifierASTNode {
+            name: attribute.to_string(),
+        },
+        _ => return Err(ExpectedIdentiferToken),
+    };
+    let dot = state.advance();
+    match dot {
+        Some(Token::Dot { .. }) => {}
+        _ => return Err(ExpectedDotToken),
+    };
+    let expression: ExpressionASTNode = parse_expression_node(state)?;
+    let expression = match expression.expression {
+        Abstraction(abstraction) => Abstraction(abstraction),
+        Application(application) => Application(application),
+    };
+    let abstraction: AbstractionASTNode = AbstractionASTNode {
+        identifier,
+        expression: Box::new(expression),
+    };
+    Ok(abstraction)
 }
 
 fn parse_application_node(state: &mut ParserState) -> Result<ApplicationASTNode, ParserErrors> {
