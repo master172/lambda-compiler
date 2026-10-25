@@ -51,5 +51,6 @@ pub enum ParserErrors {
     EOFReachedWithoutParsing,
     InvalidStatmentInitalizer,
     InvalidDefinition,
+    InvalidExpression,
     ExpectedAssignmentToken,
 }
