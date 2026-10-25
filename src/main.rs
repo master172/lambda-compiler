@@ -14,6 +14,7 @@ mod arguement_processor;
 mod lexer;
 mod parser;
 mod semantic_analyser;
+mod tree_evaluator;
 mod visitor;
 
 fn main() {
