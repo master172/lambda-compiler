@@ -10,8 +10,9 @@ use crate::{
             IdentifierASTNode,
             ParserErrors::{
                 self, ExpectedAssignmentToken, ExpectedDotToken, ExpectedIdentiferToken,
-                ExpectedRightParenthesisToken, InvalidAbstraction, InvalidApplication,
-                InvalidAtomic, InvalidDefinition, InvalidExpression, InvalidStatmentInitalizer,
+                ExpectedRightParenthesisToken, ExpectedSemiColon, InvalidAbstraction,
+                InvalidApplication, InvalidAtomic, InvalidDefinition, InvalidExpression,
+                InvalidStatmentInitalizer,
             },
             ProgramASTNode, StatementASTNode,
             Statemets::{Definition, StatementExpression},
@@ -49,52 +50,48 @@ fn parse_statement_node(state: &mut ParserState) -> Result<Option<StatementASTNo
         Some(val) => val,
         None => return Ok(None),
     };
-    match token {
+    let statement = match token {
         EOF => return Ok(None),
         Lambda { .. } => {
             let expression: ExpressionASTNode = parse_expression_node(state)?;
             let statement: StatementASTNode = StatementASTNode {
                 statement: StatementExpression(expression),
             };
-            return Ok(Some(statement));
+            statement
         }
-        Var { .. } => {
-            let token = match state.peek_n(1) {
-                Some(val) => val,
-                None => {
-                    let expression: ExpressionASTNode = parse_expression_node(state)?;
-                    let statement: StatementASTNode = StatementASTNode {
-                        statement: StatementExpression(expression),
-                    };
-                    return Ok(Some(statement));
-                }
-            };
-            match token {
-                Assignment { .. } => {
-                    let definition: DefinitionASTNode = parse_defintion_node(state)?;
-                    let statement: StatementASTNode = StatementASTNode {
-                        statement: Definition(definition),
-                    };
-                    return Ok(Some(statement));
-                }
-                _ => {
-                    let expression: ExpressionASTNode = parse_expression_node(state)?;
-                    let statement: StatementASTNode = StatementASTNode {
-                        statement: StatementExpression(expression),
-                    };
-                    return Ok(Some(statement));
-                }
+        Var { .. } => match state.peek_n(1) {
+            Some(Assignment { .. }) => {
+                let definition: DefinitionASTNode = parse_defintion_node(state)?;
+                let statement: StatementASTNode = StatementASTNode {
+                    statement: Definition(definition),
+                };
+                statement
             }
-        }
+            _ => {
+                let expression: ExpressionASTNode = parse_expression_node(state)?;
+                let statement: StatementASTNode = StatementASTNode {
+                    statement: StatementExpression(expression),
+                };
+                statement
+            }
+        },
         LeftParen { .. } => {
             let expression: ExpressionASTNode = parse_expression_node(state)?;
             let statement: StatementASTNode = StatementASTNode {
                 statement: StatementExpression(expression),
             };
-            return Ok(Some(statement));
+            statement
         }
         _ => return Err(InvalidStatmentInitalizer),
     };
+
+    //check for ending with semi colon
+    let semi_colon = state.advance();
+    match semi_colon {
+        Some(SemiColon { .. }) => {}
+        _ => return Err(ExpectedSemiColon),
+    };
+    Ok(Some(statement))
 }
 
 fn parse_defintion_node(state: &mut ParserState) -> Result<DefinitionASTNode, ParserErrors> {
@@ -186,9 +183,14 @@ fn parse_application_node(state: &mut ParserState) -> Result<ApplicationASTNode,
         left: Box::new(left),
         right: vec![],
     };
-    while let Some(SemiColon { .. }) = state.peek() {
-        let right = parse_atomic_node(state)?;
-        application.right.push(Box::new(right));
+    while let Some(token) = state.peek() {
+        match token {
+            Var { .. } | LeftParen { .. } => {
+                let right = parse_atomic_node(state)?;
+                application.right.push(Box::new(right));
+            }
+            _ => break,
+        };
     }
 
     Ok(application)

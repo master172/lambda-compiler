@@ -56,6 +56,7 @@ pub enum ParserErrors {
     InvalidApplication,
     InvalidAtomic,
     ExpectedDotToken,
+    ExpectedSemiColon,
     ExpectedRightParenthesisToken,
     ExpectedIdentiferToken,
     ExpectedAssignmentToken,
