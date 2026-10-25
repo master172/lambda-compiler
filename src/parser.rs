@@ -1,16 +1,17 @@
 use crate::{
-    lexer::definitions::Token::{self, Assignment, EOF, Lambda, LeftParen, Var},
+    lexer::definitions::Token::{
+        self, Assignment, EOF, Lambda, LeftParen, RightParen, SemiColon, Var,
+    },
     parser::{
         definitions::{
-            AbstractionASTNode, ApplicationASTNode,
-            Atom::Identifier,
-            AtomicASTNode, DefinitionASTNode, ExpressionASTNode,
+            AbstractionASTNode, ApplicationASTNode, Atom, AtomicASTNode, DefinitionASTNode,
+            ExpressionASTNode,
             Expressions::{Abstraction, Application},
             IdentifierASTNode,
             ParserErrors::{
                 self, ExpectedAssignmentToken, ExpectedDotToken, ExpectedIdentiferToken,
-                InvalidAbstraction, InvalidApplication, InvalidAtomic, InvalidDefinition,
-                InvalidExpression, InvalidStatmentInitalizer,
+                ExpectedRightParenthesisToken, InvalidAbstraction, InvalidApplication,
+                InvalidAtomic, InvalidDefinition, InvalidExpression, InvalidStatmentInitalizer,
             },
             ProgramASTNode, StatementASTNode,
             Statemets::{Definition, StatementExpression},
@@ -178,23 +179,51 @@ fn parse_abstraction_node(state: &mut ParserState) -> Result<AbstractionASTNode,
 fn parse_application_node(state: &mut ParserState) -> Result<ApplicationASTNode, ParserErrors> {
     let left = state.advance();
     let left = match left {
-        Some(Var { .. }) => match parse_atomic_node(state)? {
-            Some(atomic) => atomic,
-            None => return Err(InvalidAtomic),
-        },
+        Some(Var { .. }) => parse_atomic_node(state)?,
         _ => return Err(InvalidApplication),
     };
     let mut application: ApplicationASTNode = ApplicationASTNode {
         left: Box::new(left),
         right: vec![],
     };
-    while let Some(right) = parse_atomic_node(state)? {
+    while let Some(SemiColon { .. }) = state.peek() {
+        let right = parse_atomic_node(state)?;
         application.right.push(Box::new(right));
     }
 
     Ok(application)
 }
 
-fn parse_atomic_node(state: &mut ParserState) -> Result<Option<AtomicASTNode>, ParserErrors> {
-    todo!()
+fn parse_atomic_node(state: &mut ParserState) -> Result<AtomicASTNode, ParserErrors> {
+    let atomic = state.advance();
+    let atomic = match atomic {
+        Some(Var {
+            source: _source,
+            attribute,
+        }) => {
+            let identifier: IdentifierASTNode = IdentifierASTNode {
+                name: attribute.to_string(),
+            };
+            let atomic: AtomicASTNode = AtomicASTNode {
+                atom: Atom::Identifier(identifier),
+            };
+            atomic
+        }
+        Some(LeftParen { .. }) => {
+            let expression: ExpressionASTNode = parse_expression_node(state)?;
+            let atomic: AtomicASTNode = AtomicASTNode {
+                atom: Atom::AtomicExpression(expression),
+            };
+            //consuming the right parenthesis
+            let right_paren = state.advance();
+            match right_paren {
+                Some(RightParen { .. }) => {}
+                _ => return Err(ExpectedRightParenthesisToken),
+            };
+            atomic
+        }
+        _ => return Err(InvalidAtomic),
+    };
+
+    Ok(atomic)
 }
