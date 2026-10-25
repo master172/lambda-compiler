@@ -47,7 +47,7 @@ impl<'table, 'ast> Analyser<'table, 'ast> {
     }
 }
 
-impl<'table, 'ast> Visitor<'ast, SemanticErrors<'ast>> for Analyser<'table, 'ast> {
+impl<'table, 'ast> Visitor<'ast, (), SemanticErrors<'ast>> for Analyser<'table, 'ast> {
     fn visit_program(&mut self, node: &'ast ProgramASTNode) -> Result<(), SemanticErrors<'ast>> {
         //validate each statement errors are bubbled up
         for i in node.statements.iter() {

@@ -170,72 +170,72 @@ impl fmt::Display for ParserErrors {
 }
 
 impl<'ast> Visitable<'ast> for ProgramASTNode {
-    fn accept<V, E>(&'ast self, visitor: &mut V) -> Result<(), E>
+    fn accept<V, R, E>(&'ast self, visitor: &mut V) -> Result<R, E>
     where
-        V: crate::visitor::definitons::Visitor<'ast, E>,
+        V: crate::visitor::definitons::Visitor<'ast, R, E>,
     {
         visitor.visit_program(self)
     }
 }
 
 impl<'ast> Visitable<'ast> for StatementASTNode {
-    fn accept<V, E>(&'ast self, visitor: &mut V) -> Result<(), E>
+    fn accept<V, R, E>(&'ast self, visitor: &mut V) -> Result<R, E>
     where
-        V: crate::visitor::definitons::Visitor<'ast, E>,
+        V: crate::visitor::definitons::Visitor<'ast, R, E>,
     {
         visitor.visit_statement(self)
     }
 }
 
 impl<'ast> Visitable<'ast> for DefinitionASTNode {
-    fn accept<V, E>(&'ast self, visitor: &mut V) -> Result<(), E>
+    fn accept<V, R, E>(&'ast self, visitor: &mut V) -> Result<R, E>
     where
-        V: crate::visitor::definitons::Visitor<'ast, E>,
+        V: crate::visitor::definitons::Visitor<'ast, R, E>,
     {
         visitor.visit_definition(self)
     }
 }
 
 impl<'ast> Visitable<'ast> for IdentifierASTNode {
-    fn accept<V, E>(&'ast self, visitor: &mut V) -> Result<(), E>
+    fn accept<V, R, E>(&'ast self, visitor: &mut V) -> Result<R, E>
     where
-        V: crate::visitor::definitons::Visitor<'ast, E>,
+        V: crate::visitor::definitons::Visitor<'ast, R, E>,
     {
         visitor.visit_identifier(self)
     }
 }
 
 impl<'ast> Visitable<'ast> for ExpressionASTNode {
-    fn accept<V, E>(&'ast self, visitor: &mut V) -> Result<(), E>
+    fn accept<V, R, E>(&'ast self, visitor: &mut V) -> Result<R, E>
     where
-        V: crate::visitor::definitons::Visitor<'ast, E>,
+        V: crate::visitor::definitons::Visitor<'ast, R, E>,
     {
         visitor.visit_expression(self)
     }
 }
 
 impl<'ast> Visitable<'ast> for AbstractionASTNode {
-    fn accept<V, E>(&'ast self, visitor: &mut V) -> Result<(), E>
+    fn accept<V, R, E>(&'ast self, visitor: &mut V) -> Result<R, E>
     where
-        V: crate::visitor::definitons::Visitor<'ast, E>,
+        V: crate::visitor::definitons::Visitor<'ast, R, E>,
     {
         visitor.visit_abstraction(self)
     }
 }
 
 impl<'ast> Visitable<'ast> for ApplicationASTNode {
-    fn accept<V, E>(&'ast self, visitor: &mut V) -> Result<(), E>
+    fn accept<V, R, E>(&'ast self, visitor: &mut V) -> Result<R, E>
     where
-        V: visitor::definitons::Visitor<'ast, E>,
+        V: visitor::definitons::Visitor<'ast, R, E>,
     {
         visitor.visit_application(self)
     }
 }
 
 impl<'ast> Visitable<'ast> for AtomicASTNode {
-    fn accept<V, E>(&'ast self, visitor: &mut V) -> Result<(), E>
+    fn accept<V, R, E>(&'ast self, visitor: &mut V) -> Result<R, E>
     where
-        V: visitor::definitons::Visitor<'ast, E>,
+        V: visitor::definitons::Visitor<'ast, R, E>,
     {
         visitor.visit_atomic(self)
     }
