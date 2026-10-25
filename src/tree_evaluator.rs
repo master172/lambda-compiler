@@ -80,6 +80,12 @@ pub fn reduce_application_once(application: &mut Expressions, definitions: &Sema
         _ => false,
     };
 
+    if inner_application.right.is_empty() {
+        if let AtomicExpression(inner) = &inner_application.left.atom {
+            *application = inner.expression.clone();
+            return true;
+        }
+    }
     // if it is not an abstraction try reducing the identifier once if it reduces return true
     if !is_abstraction {
         if reduce_atomic_once(&mut inner_application.left, definitions) {

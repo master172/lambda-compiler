@@ -150,7 +150,7 @@ fn parse_expression_node(state: &mut ParserState) -> Result<ExpressionASTNode, P
             };
             expression
         }
-        Some(Var { .. }) => {
+        Some(Var { .. }) | Some(LeftParen { .. }) => {
             let application: ApplicationASTNode = parse_application_node(state)?;
             let expression: ExpressionASTNode = ExpressionASTNode {
                 expression: definitions::Expressions::Application(application),

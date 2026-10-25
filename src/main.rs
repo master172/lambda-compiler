@@ -7,6 +7,7 @@ use crate::{
     },
     lexer::definitions::Token,
     semantic_analyser::{create_semantic_table, definitions::Analyser},
+    tree_evaluator::evaluate,
     visitor::definitons::Visitor,
 };
 
@@ -38,7 +39,7 @@ fn main() {
     };
 
     // try to parse the stream of tokens into an AST
-    let program_ast = match parser::parse(tokens) {
+    let mut program_ast = match parser::parse(tokens) {
         Ok(ast) => ast,
         Err(err) => panic!("parser failed with error: {}", err),
     };
@@ -53,7 +54,10 @@ fn main() {
         Ok(_) => {}
         Err(err) => panic!("semantic table building failed with error: {}", err),
     };
-
     // semantic analysyis completed we can move to interpetation or code gen from here
+
+    // we just evaluat the AST directly here
+    evaluate(&mut program_ast, &semantic_table);
+
     println!("{:#?}", program_ast)
 }
