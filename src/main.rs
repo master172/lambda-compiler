@@ -6,6 +6,8 @@ use crate::{
         packet_processor,
     },
     lexer::definitions::Token,
+    semantic_analyser::{create_semantic_table, definitions::Analyser},
+    visitor::definitons::Visitor,
 };
 
 mod arguement_processor;
@@ -34,10 +36,23 @@ fn main() {
         Err(e) => panic!("lexer failed with error: {e}"),
     };
 
+    // try to parse the stream of tokens into an AST
     let program_ast = match parser::parse(tokens) {
         Ok(ast) => ast,
         Err(err) => panic!("parser failed with error: {}", err),
     };
 
+    // run the semantic checker on the ast
+    let semantic_table = match create_semantic_table(&program_ast) {
+        Ok(result) => result,
+        Err(err) => panic!("semantic table building failed with error: {}", err),
+    };
+    let mut semantic_visitor = Analyser::new(&semantic_table);
+    match semantic_visitor.visit_program(&program_ast) {
+        Ok(()) => {}
+        Err(err) => panic!("semantic table building failed with error: {}", err),
+    };
+
+    // semantic analysyis completed we can move to interpetation or code gen from here
     println!("{:#?}", program_ast)
 }

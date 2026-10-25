@@ -7,23 +7,33 @@ use crate::{
         IdentifierASTNode, ProgramASTNode, StatementASTNode,
         Statemets::{Definition, StatementExpression},
     },
-    semantic_analyser::definitions::SemanticErrors::UndeclaredIdentifier,
+    semantic_analyser::definitions::SemanticErrors::{DuplicateDefinition, UndeclaredIdentifier},
     visitor::definitons::Visitable,
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 use crate::visitor::definitons::Visitor;
 
+#[derive(Debug)]
 pub enum SemanticErrors<'a> {
     UndeclaredIdentifier(&'a str),
     DuplicateDefinition(&'a str),
+}
+
+impl<'a> Display for SemanticErrors<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UndeclaredIdentifier(name) => write!(f, "undeclared identifer: {name}"),
+            DuplicateDefinition(name) => write!(f, "duplicate definiton: {name}"),
+        }
+    }
 }
 
 pub struct SemanticTable<'a> {
     pub definitions: HashMap<&'a str, &'a DefinitionASTNode>,
 }
 
-struct Analyser<'table, 'ast> {
+pub struct Analyser<'table, 'ast> {
     semantic_table: &'table SemanticTable<'ast>,
     bound_variables: Vec<&'ast str>,
 }
