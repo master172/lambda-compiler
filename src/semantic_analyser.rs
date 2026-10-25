@@ -22,7 +22,7 @@ pub fn create_semantic_table<'a>(
             Definition(definition) => {
                 if semantic_table
                     .definitions
-                    .contains_key(&*definition.identifier.name)
+                    .contains_key(definition.identifier.name.as_str())
                 {
                     return Err(DuplicateDefinition(&definition.identifier.name));
                 }
