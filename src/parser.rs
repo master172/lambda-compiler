@@ -9,8 +9,8 @@ use crate::{
             IdentifierASTNode,
             ParserErrors::{
                 self, ExpectedAssignmentToken, ExpectedDotToken, ExpectedIdentiferToken,
-                InvalidAbstraction, InvalidDefinition, InvalidExpression,
-                InvalidStatmentInitalizer,
+                InvalidAbstraction, InvalidApplication, InvalidAtomic, InvalidDefinition,
+                InvalidExpression, InvalidStatmentInitalizer,
             },
             ProgramASTNode, StatementASTNode,
             Statemets::{Definition, StatementExpression},
@@ -176,9 +176,25 @@ fn parse_abstraction_node(state: &mut ParserState) -> Result<AbstractionASTNode,
 }
 
 fn parse_application_node(state: &mut ParserState) -> Result<ApplicationASTNode, ParserErrors> {
-    todo!()
+    let left = state.advance();
+    let left = match left {
+        Some(Var { .. }) => match parse_atomic_node(state)? {
+            Some(atomic) => atomic,
+            None => return Err(InvalidAtomic),
+        },
+        _ => return Err(InvalidApplication),
+    };
+    let mut application: ApplicationASTNode = ApplicationASTNode {
+        left: Box::new(left),
+        right: vec![],
+    };
+    while let Some(right) = parse_atomic_node(state)? {
+        application.right.push(Box::new(right));
+    }
+
+    Ok(application)
 }
 
-fn parse_atomic_node(state: &mut ParserState) -> Result<AtomicASTNode, ParserErrors> {
+fn parse_atomic_node(state: &mut ParserState) -> Result<Option<AtomicASTNode>, ParserErrors> {
     todo!()
 }
