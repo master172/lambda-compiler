@@ -12,6 +12,7 @@ use crate::{
                 self, ExpectedAssignmentToken, ExpectedDotToken, ExpectedIdentiferToken,
                 ExpectedRightParenthesisToken, ExpectedSemiColon, InvalidAbstraction,
                 InvalidAtomic, InvalidDefinition, InvalidExpression, InvalidStatmentInitalizer,
+                UnexpectedEOFError,
             },
             ProgramASTNode, StatementASTNode,
             Statemets::{Definition, StatementExpression},
@@ -27,7 +28,7 @@ pub fn parse(tokens: Vec<Token>) -> Result<ProgramASTNode, ParserErrors> {
     let mut state: ParserState = ParserState::new(tokens);
     let node = match parse_program_node(&mut state)? {
         Some(val) => val,
-        None => return Err(ParserErrors::EOFReachedWithoutParsing),
+        None => return Err(ParserErrors::UnexpectedEOFError),
     };
     return Ok(node);
 }
@@ -50,7 +51,7 @@ fn parse_statement_node(state: &mut ParserState) -> Result<Option<StatementASTNo
         None => return Ok(None),
     };
     let statement = match token {
-        EOF => {
+        EOF { .. } => {
             state.advance();
             return Ok(None);
         }
@@ -84,14 +85,23 @@ fn parse_statement_node(state: &mut ParserState) -> Result<Option<StatementASTNo
             };
             statement
         }
-        _ => return Err(InvalidStatmentInitalizer),
+        other => {
+            return Err(InvalidStatmentInitalizer {
+                location: other.get_source(),
+            });
+        }
     };
 
     //check for ending with semi colon
     let semi_colon = state.advance();
     match semi_colon {
         Some(SemiColon { .. }) => {}
-        _ => return Err(ExpectedSemiColon),
+        Some(val) => {
+            return Err(ExpectedSemiColon {
+                location: val.get_source(),
+            });
+        }
+        None => return Err(UnexpectedEOFError),
     };
     Ok(Some(statement))
 }
@@ -105,12 +115,22 @@ fn parse_defintion_node(state: &mut ParserState) -> Result<DefinitionASTNode, Pa
         }) => IdentifierASTNode {
             name: attribute.to_string(),
         },
-        _ => return Err(InvalidDefinition),
+        Some(token) => {
+            return Err(InvalidDefinition {
+                location: token.get_source(),
+            });
+        }
+        None => return Err(UnexpectedEOFError),
     };
     let assignment = state.advance();
     match assignment {
         Some(Assignment { .. }) => {}
-        _ => return Err(ExpectedAssignmentToken),
+        Some(token) => {
+            return Err(ExpectedAssignmentToken {
+                location: token.get_source(),
+            });
+        }
+        None => return Err(UnexpectedEOFError),
     };
     let expression: ExpressionASTNode = parse_expression_node(state)?;
     let defenition: DefinitionASTNode = DefinitionASTNode {
@@ -137,7 +157,12 @@ fn parse_expression_node(state: &mut ParserState) -> Result<ExpressionASTNode, P
             };
             expression
         }
-        _ => return Err(InvalidExpression),
+        Some(token) => {
+            return Err(InvalidExpression {
+                location: token.get_source(),
+            });
+        }
+        None => return Err(UnexpectedEOFError),
     };
     Ok(expression_ast_node)
 }
@@ -146,7 +171,12 @@ fn parse_abstraction_node(state: &mut ParserState) -> Result<AbstractionASTNode,
     let lambda_token = state.advance();
     match lambda_token {
         Some(Lambda { .. }) => {}
-        _ => return Err(InvalidAbstraction),
+        Some(token) => {
+            return Err(InvalidAbstraction {
+                location: token.get_source(),
+            });
+        }
+        None => return Err(UnexpectedEOFError),
     };
     let identifier = state.advance();
     let identifier = match identifier {
@@ -156,12 +186,22 @@ fn parse_abstraction_node(state: &mut ParserState) -> Result<AbstractionASTNode,
         }) => IdentifierASTNode {
             name: attribute.to_string(),
         },
-        _ => return Err(ExpectedIdentiferToken),
+        Some(token) => {
+            return Err(ExpectedIdentiferToken {
+                location: token.get_source(),
+            });
+        }
+        None => return Err(UnexpectedEOFError),
     };
     let dot = state.advance();
     match dot {
         Some(Token::Dot { .. }) => {}
-        _ => return Err(ExpectedDotToken),
+        Some(token) => {
+            return Err(ExpectedDotToken {
+                location: token.get_source(),
+            });
+        }
+        None => return Err(UnexpectedEOFError),
     };
     let expression: ExpressionASTNode = parse_expression_node(state)?;
     let expression = match expression.expression {
@@ -218,11 +258,21 @@ fn parse_atomic_node(state: &mut ParserState) -> Result<AtomicASTNode, ParserErr
             let right_paren = state.advance();
             match right_paren {
                 Some(RightParen { .. }) => {}
-                _ => return Err(ExpectedRightParenthesisToken),
+                Some(token) => {
+                    return Err(ExpectedRightParenthesisToken {
+                        location: token.get_source(),
+                    });
+                }
+                None => return Err(UnexpectedEOFError),
             };
             atomic
         }
-        _ => return Err(InvalidAtomic),
+        Some(token) => {
+            return Err(InvalidAtomic {
+                location: token.get_source(),
+            });
+        }
+        None => return Err(UnexpectedEOFError),
     };
 
     Ok(atomic)

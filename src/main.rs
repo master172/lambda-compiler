@@ -34,7 +34,7 @@ fn main() {
 
     let program_ast = match parser::parse(tokens) {
         Ok(ast) => ast,
-        Err(err) => panic!("parser failed with error: {:#?}", err),
+        Err(err) => panic!("parser failed with error: {}", err),
     };
 
     println!("{:#?}", program_ast)

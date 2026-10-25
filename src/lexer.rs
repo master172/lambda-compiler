@@ -39,6 +39,7 @@ pub fn lex(file: File) -> Result<Vec<Token>, LexErrors> {
     let mut returning_token: Vec<Token> = Vec::new();
 
     let reader: BufReader<File> = BufReader::new(file);
+    let mut lines_processed: usize = 0;
     for (line_num, line) in reader.lines().enumerate() {
         let line = match line {
             Ok(val) => val,
@@ -48,9 +49,18 @@ pub fn lex(file: File) -> Result<Vec<Token>, LexErrors> {
             Ok(mut val) => returning_token.append(&mut val),
             Err(e) => return Err(e),
         };
+        lines_processed = line_num;
     }
-
-    returning_token.push(Token::EOF);
+    let last_column = match returning_token.last() {
+        Some(val) => {
+            let source = val.get_source();
+            source.get_columm() + source.get_size()
+        }
+        None => 0,
+    };
+    returning_token.push(Token::EOF {
+        source: SourceLocation::new(lines_processed, last_column, 0),
+    });
 
     Ok(returning_token)
 }

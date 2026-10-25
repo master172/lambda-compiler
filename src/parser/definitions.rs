@@ -1,3 +1,6 @@
+use crate::lexer::definitions::SourceLocation;
+use std::fmt;
+
 #[derive(Debug)]
 pub struct ProgramASTNode {
     pub statements: Vec<StatementASTNode>,
@@ -59,17 +62,106 @@ pub enum Atom {
     AtomicExpression(ExpressionASTNode),
 }
 
-#[derive(Debug)]
 pub enum ParserErrors {
-    EOFReachedWithoutParsing,
-    InvalidStatmentInitalizer,
-    InvalidDefinition,
-    InvalidExpression,
-    InvalidAbstraction,
-    InvalidAtomic,
-    ExpectedDotToken,
-    ExpectedSemiColon,
-    ExpectedRightParenthesisToken,
-    ExpectedIdentiferToken,
-    ExpectedAssignmentToken,
+    UnexpectedEOFError,
+    InvalidStatmentInitalizer { location: SourceLocation },
+    InvalidDefinition { location: SourceLocation },
+    InvalidExpression { location: SourceLocation },
+    InvalidAbstraction { location: SourceLocation },
+    InvalidAtomic { location: SourceLocation },
+    ExpectedDotToken { location: SourceLocation },
+    ExpectedSemiColon { location: SourceLocation },
+    ExpectedRightParenthesisToken { location: SourceLocation },
+    ExpectedIdentiferToken { location: SourceLocation },
+    ExpectedAssignmentToken { location: SourceLocation },
+}
+
+impl fmt::Display for ParserErrors {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ParserErrors::UnexpectedEOFError => {
+                write!(f, "Unexpected end of file")
+            }
+            ParserErrors::InvalidStatmentInitalizer { location } => {
+                write!(
+                    f,
+                    "Invalid statement initializer at line {}, column {}",
+                    location.get_line() + 1,
+                    location.get_columm() + 1
+                )
+            }
+            ParserErrors::InvalidDefinition { location } => {
+                write!(
+                    f,
+                    "Invalid definition at line {}, column {}",
+                    location.get_line() + 1,
+                    location.get_columm() + 1
+                )
+            }
+            ParserErrors::InvalidExpression { location } => {
+                write!(
+                    f,
+                    "Invalid expression at line {}, column {}",
+                    location.get_line() + 1,
+                    location.get_columm() + 1
+                )
+            }
+            ParserErrors::InvalidAbstraction { location } => {
+                write!(
+                    f,
+                    "Invalid abstraction at line {}, column {}",
+                    location.get_line() + 1,
+                    location.get_columm() + 1
+                )
+            }
+            ParserErrors::InvalidAtomic { location } => {
+                write!(
+                    f,
+                    "Invalid atomic expression at line {}, column {}",
+                    location.get_line() + 1,
+                    location.get_columm() + 1
+                )
+            }
+            ParserErrors::ExpectedDotToken { location } => {
+                write!(
+                    f,
+                    "Expected '.' at line {}, column {}",
+                    location.get_line() + 1,
+                    location.get_columm() + 1
+                )
+            }
+            ParserErrors::ExpectedSemiColon { location } => {
+                write!(
+                    f,
+                    "Expected ';' at line {}, column {}",
+                    location.get_line() + 1,
+                    location.get_columm() + 1
+                )
+            }
+            ParserErrors::ExpectedRightParenthesisToken { location } => {
+                write!(
+                    f,
+                    "Expected ')' at line {}, column {}",
+                    location.get_line() + 1,
+                    location.get_columm() + 1
+                )
+            }
+            ParserErrors::ExpectedIdentiferToken { location } => {
+                write!(
+                    f,
+                    "Expected an identifier at line {}, column {}",
+                    location.get_line() + 1,
+                    location.get_columm() + 1
+                )
+            }
+            ParserErrors::ExpectedAssignmentToken { location } => {
+                write!(
+                    f,
+                    "Expected '=' at line {}, column {}",
+                    location.get_line() + 1,
+                    location.get_columm() + 1
+                )
+            }
+        }
+    }
 }

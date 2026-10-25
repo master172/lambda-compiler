@@ -10,7 +10,7 @@ impl ParserState {
         return Self { tokens, current: 0 };
     }
 
-    pub fn peek(&mut self) -> Option<&Token> {
+    pub fn peek(&self) -> Option<&Token> {
         self.tokens.get(self.current)
     }
 

@@ -3,7 +3,7 @@ use std::fmt::Display;
 use crate::lexer::definitions::LexErrors::{FailedToProcessLine, InvalidIdentifier};
 
 // the members of source location are kept private to prevent accidental mutation
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct SourceLocation {
     line: usize,
     column: usize,
@@ -26,10 +26,6 @@ impl SourceLocation {
 
     pub fn get_size(&self) -> usize {
         self.size
-    }
-
-    pub fn get_line_and_column(&self) -> (usize, usize) {
-        (self.line, self.column)
     }
 }
 
@@ -57,7 +53,27 @@ pub enum Token {
     SemiColon {
         source: SourceLocation,
     },
-    EOF,
+    EOF {
+        source: SourceLocation,
+    },
+}
+
+impl Token {
+    pub fn get_source(&self) -> SourceLocation {
+        match self {
+            Self::EOF { source } => *source,
+            Self::Assignment { source } => *source,
+            Self::Dot { source } => *source,
+            Self::Lambda { source } => *source,
+            Self::LeftParen { source } => *source,
+            Self::RightParen { source } => *source,
+            Self::SemiColon { source } => *source,
+            Self::Var {
+                source,
+                attribute: _attribute,
+            } => *source,
+        }
+    }
 }
 
 pub enum LexErrors {
