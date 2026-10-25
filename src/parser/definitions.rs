@@ -50,4 +50,6 @@ pub enum Atom {
 pub enum ParserErrors {
     EOFReachedWithoutParsing,
     InvalidStatmentInitalizer,
+    InvalidDefinition,
+    ExpectedAssignmentToken,
 }

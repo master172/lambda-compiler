@@ -1,14 +1,10 @@
 use crate::{
-    lexer::definitions::Token::{self, Assignment, EOF, Lambda, LeftParen, Var},
-    parser::{
+    lexer::definitions::Token::{self, Assignment, EOF, Lambda, LeftParen, Var}, parser::{
         definitions::{
-            AbstractionASTNode, ApplicationASTNode, AtomicASTNode, DefinitionASTNode,
-            ExpressionASTNode,
-            ParserErrors::{self, InvalidStatmentInitalizer},
-            ProgramASTNode, StatementASTNode,
-            Statemets::{Definition, StatementExpression},
-        },
-        state::ParserState,
+            AbstractionASTNode, ApplicationASTNode, Atom::Identifier, AtomicASTNode, DefinitionASTNode, ExpressionASTNode, IdentifierASTNode, ParserErrors::{
+                self, ExpectedAssignmentToken, InvalidDefinition, InvalidStatmentInitalizer,
+            }, ProgramASTNode, StatementASTNode, Statemets::{Definition, StatementExpression},
+        }, state::ParserState,
     },
 };
 
@@ -89,7 +85,19 @@ fn parse_statement_node(state: &mut ParserState) -> Result<Option<StatementASTNo
 }
 
 fn parse_defintion_node(state: &mut ParserState) -> Result<DefinitionASTNode, ParserErrors> {
-    todo!()
+    let identifier = state.advance();
+    let identifier = match identifier {
+        Some(Var { source: _source, attribute }) => IdentifierASTNode {name: attribute.to_string()},
+        _ => return Err(InvalidDefinition),
+    };
+    let assignment = state.advance();
+    match assignment {
+        Some(Assignment { .. }) => {}
+        _ => return Err(ExpectedAssignmentToken),
+    };
+    let expression: ExpressionASTNode = parse_expression_node(state)?;
+    let defenition:DefinitionASTNode = DefinitionASTNode { identifier: identifier, expression };
+    Ok(defenition)
 }
 
 fn parse_expression_node(state: &mut ParserState) -> Result<ExpressionASTNode, ParserErrors> {
