@@ -1,9 +1,12 @@
 use std::collections::HashSet;
 
-use crate::parser::definitions::{
-    Atom::{AtomicExpression, Identifier},
-    AtomicASTNode, ExpressionASTNode,
-    Expressions::{self, Abstraction, Application},
+use crate::{
+    parser::definitions::{
+        Atom::{self, AtomicExpression, Identifier},
+        AtomicASTNode, ExpressionASTNode,
+        Expressions::{self, Abstraction, Application},
+    },
+    semantic_analyser::definitions::SemanticTable,
 };
 
 // free variables are variables not bound by any argument in the abstraction
@@ -81,13 +84,13 @@ pub fn collect_all_atomic_names(node: &AtomicASTNode, hash: &mut HashSet<String>
 // and reserved is used for defintions
 pub fn get_new_name(
     expression: &ExpressionASTNode,
-    replacement: &ExpressionASTNode,
-    reserved: &[&str],
+    replacement: &AtomicASTNode,
+    reserved: &SemanticTable<'_>,
 ) -> String {
     let mut used = get_all_variable_names(expression);
-    used.extend(get_all_variable_names(replacement));
-    for in_use in reserved {
-        used.insert((*in_use).to_owned());
+    used.extend(get_all_atomic_variable_names(replacement));
+    for in_use in reserved.definitions.keys() {
+        used.insert(in_use.to_string());
     }
     let mut counter: usize = 0;
 
@@ -98,6 +101,12 @@ pub fn get_new_name(
         }
         counter += 1;
     }
+}
+
+pub fn get_all_atomic_variable_names(atom: &AtomicASTNode) -> HashSet<String> {
+    let mut names = HashSet::new();
+    collect_all_atomic_names(atom, &mut names);
+    names
 }
 
 // renaming starts here, it follows the same pattern of recursive delegation down
