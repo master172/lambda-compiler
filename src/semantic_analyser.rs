@@ -8,7 +8,7 @@ use crate::{
     },
 };
 
-mod definitions;
+pub mod definitions;
 
 //no need for a tree evaluator here since definitons are statements
 pub fn create_semantic_table<'a>(
