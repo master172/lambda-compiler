@@ -3,7 +3,7 @@ use crate::{
         AbstractionASTNode, ApplicationASTNode,
         Atom::{AtomicExpression, Identifier},
         AtomicASTNode, ExpressionASTNode,
-        Expressions::{Abstraction, Application},
+        Expressions::{self, Abstraction, Application},
         ProgramASTNode,
         Statemets::{Definition, StatementExpression},
     },
@@ -87,16 +87,46 @@ pub fn reduce_atomic_once(atomic: &mut AtomicASTNode, definitions: &SemanticTabl
     modified
 }
 
+// this is just mostly reduce until you can delegate to atomics
 pub fn substitute_expression(
-    expression: &mut ExpressionASTNode,
-    replacement: &mut ExpressionASTNode,
+    expression: &mut Expressions,
+    replacement: &ExpressionASTNode,
     target: &str,
 ) {
+    match expression {
+        // variable shadowed do not try to substitute further
+        Abstraction(abstraction) => {
+            if abstraction.identifier.name == target {
+                return;
+            }
+
+            substitute_expression(abstraction.expression.as_mut(), replacement, target);
+        }
+        Application(application) => {
+            substitute_atomic(&mut application.left, replacement, target);
+
+            for arguement in &mut application.right {
+                substitute_atomic(arguement, replacement, target);
+            }
+        }
+    }
 }
 
+// replace atomic identifiers with their expressions
+// otherwise keep replacing the expressions with targets
 pub fn substitute_atomic(
     expression: &mut AtomicASTNode,
-    replacement: &mut AtomicASTNode,
+    replacement: &ExpressionASTNode,
     target: &str,
 ) {
+    match &mut expression.atom {
+        Identifier(identifier) => {
+            if identifier.name == target {
+                expression.atom = AtomicExpression(replacement.clone());
+            }
+        }
+        AtomicExpression(inner) => {
+            substitute_expression(&mut inner.expression, replacement, target);
+        }
+    }
 }
