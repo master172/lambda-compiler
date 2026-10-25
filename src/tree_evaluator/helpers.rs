@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::parser::definitions::{
-    Atom::{AtomicExpression, Identifier},
+    Atom::{self, AtomicExpression, Identifier},
     AtomicASTNode, ExpressionASTNode,
     Expressions::{self, Abstraction, Application},
 };
@@ -97,5 +97,43 @@ pub fn get_new_name(
             return candidate;
         }
         counter += 1;
+    }
+}
+
+// renaming starts here, it follows the same pattern of recursive delegation down
+// from expression ast node, then abstractions and applications, then to atomics
+pub fn replace_in_place(node: &mut ExpressionASTNode, old: &str, new: &str) {
+    replace_in_expression(&mut node.expression, old, new);
+}
+
+pub fn replace_in_expression(expression: &mut Expressions, old: &str, new: &str) {
+    match expression {
+        Abstraction(abstraction) => {
+            // if an inner abstraction contains the name we are trying to replace them we must stop
+            // since otherwise we are changing the name of a variable shadowing the old one
+            if &abstraction.identifier.name == old {
+                return;
+            }
+
+            replace_in_expression(&mut abstraction.expression, old, new);
+        }
+        Application(application) => {
+            replace_in_atomic(&mut application.left, old, new);
+
+            for arguement in &mut application.right {
+                replace_in_atomic(arguement, old, new);
+            }
+        }
+    }
+}
+
+pub fn replace_in_atomic(node: &mut AtomicASTNode, old: &str, new: &str) {
+    match &mut node.atom {
+        Identifier(identifier) => {
+            if identifier.name == old {
+                identifier.name = new.to_owned();
+            }
+        }
+        AtomicExpression(expression) => replace_in_place(expression, old, new),
     }
 }
