@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::parser::definitions::{
-    Atom::{self, AtomicExpression, Identifier},
+    Atom::{AtomicExpression, Identifier},
     AtomicASTNode, ExpressionASTNode,
     Expressions::{self, Abstraction, Application},
 };

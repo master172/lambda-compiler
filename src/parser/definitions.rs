@@ -26,40 +26,40 @@ pub struct DefinitionASTNode {
     pub expression: ExpressionASTNode,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExpressionASTNode {
     pub expression: Expressions,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IdentifierASTNode {
     pub name: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expressions {
     Abstraction(AbstractionASTNode),
     Application(ApplicationASTNode),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AbstractionASTNode {
     pub identifier: IdentifierASTNode,
     pub expression: Box<Expressions>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ApplicationASTNode {
     pub left: Box<AtomicASTNode>,
     pub right: Vec<Box<AtomicASTNode>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AtomicASTNode {
     pub atom: Atom,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Atom {
     Identifier(IdentifierASTNode),
     AtomicExpression(ExpressionASTNode),
