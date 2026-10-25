@@ -3,25 +3,25 @@ use std::collections::HashSet;
 use crate::parser::definitions::{
     Atom::{AtomicExpression, Identifier},
     AtomicASTNode, ExpressionASTNode,
-    Expressions::{self},
+    Expressions::{self, Abstraction, Application},
 };
-
-pub fn get_free_variables(node: &ExpressionASTNode) -> HashSet<String> {
-    return get_free_inner(&node.expression);
-}
 
 // free variables are variables not bound by any argument in the abstraction
 // since only abstractions can bind variables just finding all variables in the AST
 // and then removing the ones the abstraction binds is enough
+pub fn get_free_variables(node: &ExpressionASTNode) -> HashSet<String> {
+    return get_free_inner(&node.expression);
+}
+
 pub fn get_free_inner(expression: &Expressions) -> HashSet<String> {
     match expression {
-        Expressions::Abstraction(abstraction) => {
+        Abstraction(abstraction) => {
             let mut variables = get_free_inner(abstraction.expression.as_ref());
             // remove bound variables
             variables.remove(&abstraction.identifier.name);
             variables
         }
-        Expressions::Application(application) => {
+        Application(application) => {
             let mut variables = free_variables_atomic(&application.left);
 
             for argument in &application.right {
@@ -37,5 +37,65 @@ pub fn free_variables_atomic(atom: &AtomicASTNode) -> HashSet<String> {
     match &atom.atom {
         Identifier(identifier) => HashSet::from([identifier.name.clone()]),
         AtomicExpression(expression) => get_free_variables(expression),
+    }
+}
+
+// we need all names in the current scope to find out ones that are not in use
+// so that we can generate fresh new names
+pub fn get_all_variable_names(node: &ExpressionASTNode) -> HashSet<String> {
+    let mut all_names = HashSet::new();
+    get_all_names_inner(&node.expression, &mut all_names);
+    all_names
+}
+
+pub fn get_all_names_inner(expression: &Expressions, hash: &mut HashSet<String>) {
+    match expression {
+        Abstraction(abstraction) => {
+            hash.insert(abstraction.identifier.name.clone());
+            get_all_names_inner(&abstraction.expression, hash)
+        }
+        Application(application) => {
+            collect_all_atomic_names(&application.left, hash);
+
+            for arguement in &application.right {
+                collect_all_atomic_names(arguement, hash);
+            }
+        }
+    }
+}
+
+pub fn collect_all_atomic_names(node: &AtomicASTNode, hash: &mut HashSet<String>) {
+    match &node.atom {
+        Identifier(identifier) => {
+            hash.insert(identifier.name.clone());
+        }
+        AtomicExpression(expression) => {
+            get_all_names_inner(&expression.expression, hash);
+        }
+    }
+}
+
+// we need all variable names and global definiton names to get a new name
+// thankfully one function is enough here
+// expression is the one we are replacing with the replacement
+// and reserved is used for defintions
+pub fn get_new_name(
+    expression: &ExpressionASTNode,
+    replacement: &ExpressionASTNode,
+    reserved: &[&str],
+) -> String {
+    let mut used = get_all_variable_names(expression);
+    used.extend(get_all_variable_names(replacement));
+    for in_use in reserved {
+        used.insert((*in_use).to_owned());
+    }
+    let mut counter: usize = 0;
+
+    loop {
+        let candidate = format!("alpha{counter}");
+        if !used.contains(&candidate) {
+            return candidate;
+        }
+        counter += 1;
     }
 }
