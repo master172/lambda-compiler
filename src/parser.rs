@@ -21,7 +21,7 @@ use crate::{
     },
 };
 
-mod definitions;
+pub mod definitions;
 mod state;
 
 pub fn parse(tokens: Vec<Token>) -> Result<ProgramASTNode, ParserErrors> {

@@ -11,6 +11,8 @@ use crate::{
 mod arguement_processor;
 mod lexer;
 mod parser;
+mod semantic_analyser;
+mod visitor;
 
 fn main() {
     // gets the arguement packet from the args parser
