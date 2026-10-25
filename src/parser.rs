@@ -51,7 +51,10 @@ fn parse_statement_node(state: &mut ParserState) -> Result<Option<StatementASTNo
         None => return Ok(None),
     };
     let statement = match token {
-        EOF => return Ok(None),
+        EOF => {
+            state.advance();
+            return Ok(None);
+        }
         Lambda { .. } => {
             let expression: ExpressionASTNode = parse_expression_node(state)?;
             let statement: StatementASTNode = StatementASTNode {
@@ -174,11 +177,7 @@ fn parse_abstraction_node(state: &mut ParserState) -> Result<AbstractionASTNode,
 }
 
 fn parse_application_node(state: &mut ParserState) -> Result<ApplicationASTNode, ParserErrors> {
-    let left = state.advance();
-    let left = match left {
-        Some(Var { .. }) => parse_atomic_node(state)?,
-        _ => return Err(InvalidApplication),
-    };
+    let left = parse_atomic_node(state)?;
     let mut application: ApplicationASTNode = ApplicationASTNode {
         left: Box::new(left),
         right: vec![],

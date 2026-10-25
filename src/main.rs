@@ -31,5 +31,11 @@ fn main() {
         Ok(val) => val,
         Err(e) => panic!("lexer failed with error: {e}"),
     };
-    println!("{:#?}", tokens)
+
+    let program_ast = match parser::parse(tokens) {
+        Ok(ast) => ast,
+        Err(err) => panic!("parser failed with error: {:#?}", err),
+    };
+
+    println!("{:#?}", program_ast)
 }
