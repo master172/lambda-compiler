@@ -85,7 +85,7 @@ pub fn collect_all_atomic_names(node: &AtomicASTNode, hash: &mut HashSet<String>
 pub fn get_new_name(
     expression: &ExpressionASTNode,
     replacement: &AtomicASTNode,
-    reserved: &SemanticTable<'_>,
+    reserved: &SemanticTable,
 ) -> String {
     let mut used = get_all_variable_names(expression);
     used.extend(get_all_atomic_variable_names(replacement));

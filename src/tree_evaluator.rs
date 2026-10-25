@@ -16,7 +16,7 @@ use crate::{
 mod helpers;
 
 // simple enough just normalize all expression
-pub fn evaluate(program: &mut ProgramASTNode, definitions: &SemanticTable<'_>) {
+pub fn evaluate(program: &mut ProgramASTNode, definitions: &SemanticTable) {
     for statement in &mut program.statements {
         match &mut statement.statement {
             // no need to normalize a definition
@@ -29,7 +29,7 @@ pub fn evaluate(program: &mut ProgramASTNode, definitions: &SemanticTable<'_>) {
 }
 
 // simple enough again call reduce expression until it can no longer be reduced
-pub fn normalize(expression: &mut ExpressionASTNode, definitions: &SemanticTable<'_>) {
+pub fn normalize(expression: &mut ExpressionASTNode, definitions: &SemanticTable) {
     loop {
         if reduce_expression_once(expression, definitions) == false {
             break;
@@ -40,7 +40,7 @@ pub fn normalize(expression: &mut ExpressionASTNode, definitions: &SemanticTable
 // just delegate the work to the respective functions
 pub fn reduce_expression_once(
     expression: &mut ExpressionASTNode,
-    definitions: &SemanticTable<'_>,
+    definitions: &SemanticTable,
 ) -> bool {
     let modified: bool;
     match &mut expression.expression {
@@ -55,7 +55,7 @@ pub fn reduce_expression_once(
 // just recursively reducing abstractions until all you have is applications
 pub fn reduce_abstraction_once(
     abstraction: &mut AbstractionASTNode,
-    definitions: &SemanticTable<'_>,
+    definitions: &SemanticTable,
 ) -> bool {
     match abstraction.expression.as_mut() {
         Abstraction(abstraction) => reduce_abstraction_once(abstraction, definitions),
@@ -65,10 +65,7 @@ pub fn reduce_abstraction_once(
 
 // probbably the most important function since beta reduction happens here
 // and we check for alpha renaming here as well
-pub fn reduce_application_once(
-    application: &mut Expressions,
-    definitions: &SemanticTable<'_>,
-) -> bool {
+pub fn reduce_application_once(application: &mut Expressions, definitions: &SemanticTable) -> bool {
     // if this is not an application do not reduce just return false
     let Application(inner_application) = application else {
         return false;
@@ -129,7 +126,7 @@ pub fn reduce_application_once(
 }
 
 // this is mostly work delegation
-pub fn reduce_atomic_once(atomic: &mut AtomicASTNode, definitions: &SemanticTable<'_>) -> bool {
+pub fn reduce_atomic_once(atomic: &mut AtomicASTNode, definitions: &SemanticTable) -> bool {
     let modified: bool;
     match &mut atomic.atom {
         Identifier(identifier) => {
@@ -149,7 +146,7 @@ pub fn reduce_atomic_once(atomic: &mut AtomicASTNode, definitions: &SemanticTabl
 pub fn substitute_expression(
     expression: &mut Expressions,
     replacement: &AtomicASTNode,
-    definitions: &SemanticTable<'_>,
+    definitions: &SemanticTable,
     target: &str,
 ) {
     match expression {
@@ -203,7 +200,7 @@ pub fn substitute_expression(
 pub fn substitute_atomic(
     expression: &mut AtomicASTNode,
     replacement: &AtomicASTNode,
-    definitions: &SemanticTable<'_>,
+    definitions: &SemanticTable,
     target: &str,
 ) {
     match &mut expression.atom {

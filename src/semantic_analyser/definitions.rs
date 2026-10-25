@@ -29,17 +29,17 @@ impl<'a> Display for SemanticErrors<'a> {
     }
 }
 
-pub struct SemanticTable<'a> {
-    pub definitions: HashMap<&'a str, &'a DefinitionASTNode>,
+pub struct SemanticTable {
+    pub definitions: HashMap<String, DefinitionASTNode>,
 }
 
 pub struct Analyser<'table, 'ast> {
-    semantic_table: &'table SemanticTable<'ast>,
+    semantic_table: &'table SemanticTable,
     bound_variables: Vec<&'ast str>,
 }
 
 impl<'table, 'ast> Analyser<'table, 'ast> {
-    pub fn new(table: &'table SemanticTable<'ast>) -> Self {
+    pub fn new(table: &'table SemanticTable) -> Self {
         Self {
             semantic_table: table,
             bound_variables: vec![],
