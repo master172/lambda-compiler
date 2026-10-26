@@ -11,7 +11,8 @@ use crate::{
     },
     semantic_analyser::definitions::SemanticTable,
     tree_evaluator::helpers::{
-        free_variables_atomic, get_free_variables, get_new_name, replace_in_expression,
+        NameGenerator, free_variables_atomic, get_free_variables, rename_conflicting_binders,
+        replace_in_expression,
     },
 };
 
@@ -35,11 +36,18 @@ pub fn evaluate(program: &mut ProgramASTNode, definitions: &SemanticTable, debug
 // simple enough again call reduce expression until it can no longer be reduced
 pub fn normalize(expression: &mut ExpressionASTNode, definitions: &SemanticTable, debug: bool) {
     let mut bound_variables: HashSet<String> = HashSet::new();
+    let mut name_generator: NameGenerator = NameGenerator::new(expression, definitions);
     loop {
         if debug {
             println!("{:#?}", expression);
         }
-        if reduce_expression_once(expression, definitions, &mut bound_variables) == false {
+        if reduce_expression_once(
+            expression,
+            definitions,
+            &mut bound_variables,
+            &mut name_generator,
+        ) == false
+        {
             break;
         }
     }
@@ -50,15 +58,21 @@ pub fn reduce_expression_once(
     expression: &mut ExpressionASTNode,
     definitions: &SemanticTable,
     bound_variables: &mut HashSet<String>,
+    name_generator: &mut NameGenerator,
 ) -> bool {
     let modified: bool;
     match &mut expression.expression {
         Abstraction(abstraction) => {
-            modified = reduce_abstraction_once(abstraction, definitions, bound_variables)
+            modified =
+                reduce_abstraction_once(abstraction, definitions, bound_variables, name_generator)
         }
         Application(_) => {
-            modified =
-                reduce_application_once(&mut expression.expression, definitions, bound_variables)
+            modified = reduce_application_once(
+                &mut expression.expression,
+                definitions,
+                bound_variables,
+                name_generator,
+            )
         }
     }
     return modified;
@@ -69,16 +83,22 @@ pub fn reduce_abstraction_once(
     abstraction: &mut AbstractionASTNode,
     definitions: &SemanticTable,
     bound_variables: &mut HashSet<String>,
+    name_generator: &mut NameGenerator,
 ) -> bool {
     // we add to bound variables here which is passed throughout the evaluation
     let name = abstraction.identifier.name.clone();
     let already_present = !bound_variables.insert(name.clone());
 
     let modified = match abstraction.expression.as_mut() {
-        Abstraction(inner) => reduce_abstraction_once(inner, definitions, bound_variables),
-        Application(_) => {
-            reduce_application_once(&mut abstraction.expression, definitions, bound_variables)
+        Abstraction(inner) => {
+            reduce_abstraction_once(inner, definitions, bound_variables, name_generator)
         }
+        Application(_) => reduce_application_once(
+            &mut abstraction.expression,
+            definitions,
+            bound_variables,
+            name_generator,
+        ),
     };
 
     // we only remove the bound variable if it was not already present during the recursion
@@ -95,6 +115,7 @@ pub fn reduce_application_once(
     application: &mut Expressions,
     definitions: &SemanticTable,
     bound_variables: &mut HashSet<String>,
+    name_generator: &mut NameGenerator,
 ) -> bool {
     // if this is not an application do not reduce just return false
     let Application(inner_application) = application else {
@@ -118,7 +139,12 @@ pub fn reduce_application_once(
     }
     // if it is not an abstraction try reducing the identifier once if it reduces return true
     if !is_abstraction {
-        if reduce_atomic_once(&mut inner_application.left, definitions, bound_variables) {
+        if reduce_atomic_once(
+            &mut inner_application.left,
+            definitions,
+            bound_variables,
+            name_generator,
+        ) {
             return true;
         }
     }
@@ -134,7 +160,7 @@ pub fn reduce_application_once(
                 let remaining_arguements = std::mem::take(&mut inner_application.right);
                 let mut body = abstraction.expression.as_ref().clone();
 
-                substitute_expression(&mut body, &arguement, definitions, &target, bound_variables);
+                substitute_expression(&mut body, &arguement, definitions, &target, name_generator);
 
                 if remaining_arguements.is_empty() {
                     *application = body;
@@ -154,7 +180,7 @@ pub fn reduce_application_once(
 
     // reduce right arguements if no beta substitution happens
     for arguement in &mut inner_application.right {
-        if reduce_atomic_once(arguement, definitions, bound_variables) {
+        if reduce_atomic_once(arguement, definitions, bound_variables, name_generator) {
             return true;
         }
     }
@@ -166,6 +192,7 @@ pub fn reduce_atomic_once(
     atomic: &mut AtomicASTNode,
     definitions: &SemanticTable,
     bound_variables: &mut HashSet<String>,
+    name_generator: &mut NameGenerator,
 ) -> bool {
     let modified: bool;
     match &mut atomic.atom {
@@ -181,7 +208,8 @@ pub fn reduce_atomic_once(
             }
         }
         AtomicExpression(expression) => {
-            modified = reduce_expression_once(expression, definitions, bound_variables)
+            modified =
+                reduce_expression_once(expression, definitions, bound_variables, name_generator)
         }
     }
     modified
@@ -193,7 +221,7 @@ pub fn substitute_expression(
     replacement: &AtomicASTNode,
     definitions: &SemanticTable,
     target: &str,
-    bound_variables: &mut HashSet<String>,
+    name_generator: &mut NameGenerator,
 ) {
     match expression {
         Abstraction(abstraction) => {
@@ -219,24 +247,18 @@ pub fn substitute_expression(
             // if substituting the replacement would cause one of its free variables to become bound
             // we alpha rename it first
             if replacement_free.contains(&bound) {
-                let new_name = get_new_name(&body, replacement, definitions, bound_variables);
+                let new_name = name_generator.get_new_name(replacement);
                 replace_in_expression(abstraction.expression.as_mut(), &bound, &new_name);
                 abstraction.identifier.name = new_name;
             }
-
-            let already_present = !bound_variables.insert(abstraction.identifier.name.clone());
 
             substitute_expression(
                 abstraction.expression.as_mut(),
                 replacement,
                 definitions,
                 target,
-                bound_variables,
+                name_generator,
             );
-
-            if !already_present {
-                bound_variables.remove(&abstraction.identifier.name);
-            }
         }
         Application(application) => {
             substitute_atomic(
@@ -244,11 +266,11 @@ pub fn substitute_expression(
                 replacement,
                 definitions,
                 target,
-                bound_variables,
+                name_generator,
             );
 
             for arguement in &mut application.right {
-                substitute_atomic(arguement, replacement, definitions, target, bound_variables);
+                substitute_atomic(arguement, replacement, definitions, target, name_generator);
             }
         }
     }
@@ -261,7 +283,7 @@ pub fn substitute_atomic(
     replacement: &AtomicASTNode,
     definitions: &SemanticTable,
     target: &str,
-    bound_variables: &mut HashSet<String>,
+    name_generator: &mut NameGenerator,
 ) {
     match &mut expression.atom {
         Identifier(identifier) => {
@@ -275,12 +297,18 @@ pub fn substitute_atomic(
             if let Some(definition) = definitions.definitions.get(identifier.name.as_str()) {
                 let mut expanded_defintion = definition.expression.clone();
 
+                rename_conflicting_binders(
+                    &mut expanded_defintion.expression,
+                    replacement,
+                    definitions,
+                    name_generator,
+                );
                 substitute_expression(
                     &mut expanded_defintion.expression,
                     replacement,
                     definitions,
                     target,
-                    bound_variables,
+                    name_generator,
                 );
 
                 *expression = AtomicASTNode {
@@ -294,7 +322,7 @@ pub fn substitute_atomic(
                 replacement,
                 definitions,
                 target,
-                bound_variables,
+                name_generator,
             );
         }
     }
