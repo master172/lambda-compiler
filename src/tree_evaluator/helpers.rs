@@ -12,23 +12,23 @@ use crate::{
 // free variables are variables not bound by any argument in the abstraction
 // since only abstractions can bind variables just finding all variables in the AST
 // and then removing the ones the abstraction binds is enough
-pub fn get_free_variables(node: &ExpressionASTNode) -> HashSet<String> {
-    return get_free_inner(&node.expression);
+pub fn get_free_variables(node: &ExpressionASTNode, semantics: &SemanticTable) -> HashSet<String> {
+    return get_free_inner(&node.expression, semantics);
 }
 
-pub fn get_free_inner(expression: &Expressions) -> HashSet<String> {
+pub fn get_free_inner(expression: &Expressions, semantics: &SemanticTable) -> HashSet<String> {
     match expression {
         Abstraction(abstraction) => {
-            let mut variables = get_free_inner(abstraction.expression.as_ref());
+            let mut variables = get_free_inner(abstraction.expression.as_ref(), &semantics);
             // remove bound variables
             variables.remove(&abstraction.identifier.name);
             variables
         }
         Application(application) => {
-            let mut variables = free_variables_atomic(&application.left);
+            let mut variables = free_variables_atomic(&application.left, &semantics);
 
             for argument in &application.right {
-                variables.extend(free_variables_atomic(argument));
+                variables.extend(free_variables_atomic(argument, &semantics));
             }
 
             variables
@@ -36,10 +36,16 @@ pub fn get_free_inner(expression: &Expressions) -> HashSet<String> {
     }
 }
 
-pub fn free_variables_atomic(atom: &AtomicASTNode) -> HashSet<String> {
+pub fn free_variables_atomic(atom: &AtomicASTNode, semantics: &SemanticTable) -> HashSet<String> {
     match &atom.atom {
-        Identifier(identifier) => HashSet::from([identifier.name.clone()]),
-        AtomicExpression(expression) => get_free_variables(expression),
+        Identifier(identifier) => {
+            if let Some(definition) = semantics.definitions.get(&identifier.name) {
+                get_free_variables(&definition.expression, semantics)
+            } else {
+                HashSet::from([identifier.name.clone()])
+            }
+        }
+        AtomicExpression(expression) => get_free_variables(expression, semantics),
     }
 }
 

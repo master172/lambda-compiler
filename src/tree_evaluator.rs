@@ -205,12 +205,12 @@ pub fn substitute_expression(
                 expression: abstraction.expression.as_ref().clone(),
             };
 
-            if !get_free_variables(&body).contains(target) {
+            if !get_free_variables(&body, &definitions).contains(target) {
                 return;
             }
 
             // see which variables can be replaced in the replacement
-            let replacement_free = free_variables_atomic(replacement);
+            let replacement_free = free_variables_atomic(replacement, &definitions);
 
             // if substituting the replacement would cause one of its free variables to become bound
             // we alpha rename it first
