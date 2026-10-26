@@ -17,10 +17,13 @@ impl<'ast> Visitor<'ast, String, ()> for PrettyPrinter {
         &mut self,
         node: &'ast crate::parser::definitions::ProgramASTNode,
     ) -> Result<String, ()> {
-        let mut resultant: String = String::new();
+        let mut resultant: String = String::from("\n");
         for i in &node.statements {
-            resultant += &i.accept(self)?;
-            resultant += "\n";
+            let result = &i.accept(self)?;
+            resultant += result;
+            if !result.is_empty() {
+                resultant += "\n";
+            }
         }
         Ok(resultant)
     }
