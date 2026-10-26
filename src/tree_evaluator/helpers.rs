@@ -85,28 +85,35 @@ pub fn collect_all_atomic_names(node: &AtomicASTNode, hash: &mut HashSet<String>
 }
 
 // we need all variable names and global definiton names to get a new name
-// thankfully one function is enough here
+// thankfully one function in a struct is enough here
 // expression is the one we are replacing with the replacement
 // and reserved is used for defintions
-pub fn get_new_name(
-    expression: &ExpressionASTNode,
-    replacement: &AtomicASTNode,
-    reserved: &SemanticTable,
-) -> String {
-    let mut used = get_all_variable_names(expression);
-    used.extend(get_all_atomic_variable_names(replacement));
-    for in_use in reserved.definitions.keys() {
-        used.insert(in_use.to_string());
-    }
-
-    let mut counter: usize = 0;
-
-    loop {
-        let candidate = format!("alpha{counter}");
-        if !used.contains(&candidate) {
-            return candidate;
+pub struct NameGenerator {
+    used_names: HashSet<String>,
+    counter: usize,
+}
+impl NameGenerator {
+    pub fn new(expression: &ExpressionASTNode, reserved: &SemanticTable) -> Self {
+        let mut used = get_all_variable_names(expression);
+        for in_use in reserved.definitions.keys() {
+            used.insert(in_use.to_string());
         }
-        counter += 1;
+
+        Self {
+            used_names: used,
+            counter: 0,
+        }
+    }
+    pub fn get_new_name(&mut self, replacement: &AtomicASTNode) -> String {
+        self.used_names
+            .extend(get_all_atomic_variable_names(replacement));
+        loop {
+            let candidate = format!("alpha{}", self.counter);
+            self.counter += 1;
+            if self.used_names.insert(candidate.clone()) {
+                return candidate;
+            }
+        }
     }
 }
 
@@ -158,6 +165,7 @@ pub fn rename_conflicting_binders(
     expression: &mut Expressions,
     replacement: &AtomicASTNode,
     definitions: &SemanticTable,
+    name_generator: &mut NameGenerator,
 ) {
     match expression {
         Abstraction(abstraction) => {
@@ -170,18 +178,33 @@ pub fn rename_conflicting_binders(
                     expression: abstraction.expression.as_ref().clone(),
                 };
 
-                let new_name = get_new_name(&body, replacement, definitions);
+                let new_name = name_generator.get_new_name(replacement);
 
                 replace_in_expression(&mut abstraction.expression, &bound, &new_name);
 
                 abstraction.identifier.name = new_name;
             }
-            rename_conflicting_binders(&mut abstraction.expression, replacement, definitions);
+            rename_conflicting_binders(
+                &mut abstraction.expression,
+                replacement,
+                definitions,
+                name_generator,
+            );
         }
         Application(application) => {
-            rename_conflicting_binders_in_atomic(&mut application.left, replacement, definitions);
+            rename_conflicting_binders_in_atomic(
+                &mut application.left,
+                replacement,
+                definitions,
+                name_generator,
+            );
             for argument in &mut application.right {
-                rename_conflicting_binders_in_atomic(argument, replacement, definitions);
+                rename_conflicting_binders_in_atomic(
+                    argument,
+                    replacement,
+                    definitions,
+                    name_generator,
+                );
             }
         }
     }
@@ -191,11 +214,15 @@ pub fn rename_conflicting_binders_in_atomic(
     expression: &mut AtomicASTNode,
     replacement: &AtomicASTNode,
     definitions: &SemanticTable,
+    name_generator: &mut NameGenerator,
 ) {
     match &mut expression.atom {
         Identifier(_) => {}
-        AtomicExpression(expression) => {
-            rename_conflicting_binders(&mut expression.expression, replacement, definitions)
-        }
+        AtomicExpression(expression) => rename_conflicting_binders(
+            &mut expression.expression,
+            replacement,
+            definitions,
+            name_generator,
+        ),
     }
 }
