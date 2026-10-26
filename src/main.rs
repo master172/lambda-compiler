@@ -6,6 +6,7 @@ use crate::{
         packet_processor,
     },
     lexer::definitions::Token,
+    pretty_printer::definitions::PrettyPrinter,
     semantic_analyser::{create_semantic_table, definitions::Analyser},
     tree_evaluator::evaluate,
     visitor::definitons::Visitor,
@@ -14,6 +15,7 @@ use crate::{
 mod arguement_processor;
 mod lexer;
 mod parser;
+mod pretty_printer;
 mod semantic_analyser;
 mod tree_evaluator;
 mod visitor;
@@ -59,5 +61,11 @@ fn main() {
     // we just evaluat the AST directly here
     evaluate(&mut program_ast, &semantic_table);
 
-    println!("{:#?}", program_ast)
+    // we can print it using a pretty printer
+    let mut pretty_printer: PrettyPrinter = PrettyPrinter {};
+    match pretty_printer.visit_program(&program_ast) {
+        Ok(str) => println!("{}", str),
+        _ => eprintln!("pretty printer encountered an error"),
+    };
+    //println!("{:#?}", program_ast)
 }
