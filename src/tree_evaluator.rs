@@ -11,8 +11,7 @@ use crate::{
     },
     semantic_analyser::definitions::SemanticTable,
     tree_evaluator::helpers::{
-        free_variables_atomic, get_all_atomic_variable_names, get_all_variable_names,
-        get_free_variables, get_new_name, replace_in_expression,
+        free_variables_atomic, get_free_variables, get_new_name, replace_in_expression,
     },
 };
 
@@ -225,6 +224,8 @@ pub fn substitute_expression(
                 abstraction.identifier.name = new_name;
             }
 
+            let already_present = !bound_variables.insert(abstraction.identifier.name.clone());
+
             substitute_expression(
                 abstraction.expression.as_mut(),
                 replacement,
@@ -232,6 +233,10 @@ pub fn substitute_expression(
                 target,
                 bound_variables,
             );
+
+            if !already_present {
+                bound_variables.remove(&abstraction.identifier.name);
+            }
         }
         Application(application) => {
             substitute_atomic(
