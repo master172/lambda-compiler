@@ -62,7 +62,9 @@ fn main() {
     evaluate(&mut program_ast, &semantic_table, args_packet.debug);
 
     // we can print it using a pretty printer
-    let mut pretty_printer: PrettyPrinter = PrettyPrinter {};
+    let mut pretty_printer: PrettyPrinter = PrettyPrinter {
+        print_defintion: args_packet.defintion_print,
+    };
     match pretty_printer.visit_program(&program_ast) {
         Ok(str) => println!("{}", str),
         _ => eprintln!("pretty printer encountered an error"),

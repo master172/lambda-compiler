@@ -7,7 +7,9 @@ use crate::{
     visitor::definitons::{Visitable, Visitor},
 };
 
-pub struct PrettyPrinter {}
+pub struct PrettyPrinter {
+    pub print_defintion: bool,
+}
 
 impl<'ast> Visitor<'ast, String, ()> for PrettyPrinter {
     // verified this does its work for each statement
@@ -41,6 +43,9 @@ impl<'ast> Visitor<'ast, String, ()> for PrettyPrinter {
         &mut self,
         node: &'ast crate::parser::definitions::DefinitionASTNode,
     ) -> Result<String, ()> {
+        if self.print_defintion {
+            return Ok("".to_string());
+        }
         let mut resultant: String = String::new();
         let expression = &node.expression;
         resultant += &expression.accept(self)?;
