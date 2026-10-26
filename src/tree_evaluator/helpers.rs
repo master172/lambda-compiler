@@ -92,11 +92,9 @@ pub fn get_new_name(
     expression: &ExpressionASTNode,
     replacement: &AtomicASTNode,
     reserved: &SemanticTable,
-    bound_variables: &mut HashSet<String>,
 ) -> String {
     let mut used = get_all_variable_names(expression);
     used.extend(get_all_atomic_variable_names(replacement));
-    used.extend(bound_variables.iter().cloned());
     for in_use in reserved.definitions.keys() {
         used.insert(in_use.to_string());
     }
@@ -153,5 +151,51 @@ pub fn replace_in_atomic(node: &mut AtomicASTNode, old: &str, new: &str) {
             }
         }
         AtomicExpression(expression) => replace_in_place(expression, old, new),
+    }
+}
+
+pub fn rename_conflicting_binders(
+    expression: &mut Expressions,
+    replacement: &AtomicASTNode,
+    definitions: &SemanticTable,
+) {
+    match expression {
+        Abstraction(abstraction) => {
+            let bound = abstraction.identifier.name.clone();
+            let replacement_free = free_variables_atomic(replacement, definitions);
+
+            // if any on the free variables in the replacement contains a variable bound by the abstraction
+            if replacement_free.contains(&bound) {
+                let body = ExpressionASTNode {
+                    expression: abstraction.expression.as_ref().clone(),
+                };
+
+                let new_name = get_new_name(&body, replacement, definitions);
+
+                replace_in_expression(&mut abstraction.expression, &bound, &new_name);
+
+                abstraction.identifier.name = new_name;
+            }
+            rename_conflicting_binders(&mut abstraction.expression, replacement, definitions);
+        }
+        Application(application) => {
+            rename_conflicting_binders_in_atomic(&mut application.left, replacement, definitions);
+            for argument in &mut application.right {
+                rename_conflicting_binders_in_atomic(argument, replacement, definitions);
+            }
+        }
+    }
+}
+
+pub fn rename_conflicting_binders_in_atomic(
+    expression: &mut AtomicASTNode,
+    replacement: &AtomicASTNode,
+    definitions: &SemanticTable,
+) {
+    match &mut expression.atom {
+        Identifier(_) => {}
+        AtomicExpression(expression) => {
+            rename_conflicting_binders(&mut expression.expression, replacement, definitions)
+        }
     }
 }

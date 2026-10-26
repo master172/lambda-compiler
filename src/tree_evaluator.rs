@@ -11,7 +11,8 @@ use crate::{
     },
     semantic_analyser::definitions::SemanticTable,
     tree_evaluator::helpers::{
-        free_variables_atomic, get_free_variables, get_new_name, replace_in_expression,
+        free_variables_atomic, get_free_variables, get_new_name, rename_conflicting_binders,
+        replace_in_expression,
     },
 };
 
@@ -134,7 +135,7 @@ pub fn reduce_application_once(
                 let remaining_arguements = std::mem::take(&mut inner_application.right);
                 let mut body = abstraction.expression.as_ref().clone();
 
-                substitute_expression(&mut body, &arguement, definitions, &target, bound_variables);
+                substitute_expression(&mut body, &arguement, definitions, &target);
 
                 if remaining_arguements.is_empty() {
                     *application = body;
@@ -193,7 +194,6 @@ pub fn substitute_expression(
     replacement: &AtomicASTNode,
     definitions: &SemanticTable,
     target: &str,
-    bound_variables: &mut HashSet<String>,
 ) {
     match expression {
         Abstraction(abstraction) => {
@@ -219,36 +219,23 @@ pub fn substitute_expression(
             // if substituting the replacement would cause one of its free variables to become bound
             // we alpha rename it first
             if replacement_free.contains(&bound) {
-                let new_name = get_new_name(&body, replacement, definitions, bound_variables);
+                let new_name = get_new_name(&body, replacement, definitions);
                 replace_in_expression(abstraction.expression.as_mut(), &bound, &new_name);
                 abstraction.identifier.name = new_name;
             }
-
-            let already_present = !bound_variables.insert(abstraction.identifier.name.clone());
 
             substitute_expression(
                 abstraction.expression.as_mut(),
                 replacement,
                 definitions,
                 target,
-                bound_variables,
             );
-
-            if !already_present {
-                bound_variables.remove(&abstraction.identifier.name);
-            }
         }
         Application(application) => {
-            substitute_atomic(
-                &mut application.left,
-                replacement,
-                definitions,
-                target,
-                bound_variables,
-            );
+            substitute_atomic(&mut application.left, replacement, definitions, target);
 
             for arguement in &mut application.right {
-                substitute_atomic(arguement, replacement, definitions, target, bound_variables);
+                substitute_atomic(arguement, replacement, definitions, target);
             }
         }
     }
@@ -261,7 +248,6 @@ pub fn substitute_atomic(
     replacement: &AtomicASTNode,
     definitions: &SemanticTable,
     target: &str,
-    bound_variables: &mut HashSet<String>,
 ) {
     match &mut expression.atom {
         Identifier(identifier) => {
@@ -275,12 +261,16 @@ pub fn substitute_atomic(
             if let Some(definition) = definitions.definitions.get(identifier.name.as_str()) {
                 let mut expanded_defintion = definition.expression.clone();
 
+                rename_conflicting_binders(
+                    &mut expanded_defintion.expression,
+                    replacement,
+                    definitions,
+                );
                 substitute_expression(
                     &mut expanded_defintion.expression,
                     replacement,
                     definitions,
                     target,
-                    bound_variables,
                 );
 
                 *expression = AtomicASTNode {
@@ -289,13 +279,7 @@ pub fn substitute_atomic(
             }
         }
         AtomicExpression(inner) => {
-            substitute_expression(
-                &mut inner.expression,
-                replacement,
-                definitions,
-                target,
-                bound_variables,
-            );
+            substitute_expression(&mut inner.expression, replacement, definitions, target);
         }
     }
 }
