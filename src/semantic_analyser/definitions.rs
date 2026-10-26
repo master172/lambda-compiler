@@ -36,13 +36,15 @@ pub struct SemanticTable {
 pub struct Analyser<'table, 'ast> {
     semantic_table: &'table SemanticTable,
     bound_variables: Vec<&'ast str>,
+    allow_free_variables: bool,
 }
 
 impl<'table, 'ast> Analyser<'table, 'ast> {
-    pub fn new(table: &'table SemanticTable) -> Self {
+    pub fn new(table: &'table SemanticTable, allow_free_variables: bool) -> Self {
         Self {
             semantic_table: table,
             bound_variables: vec![],
+            allow_free_variables,
         }
     }
 }
@@ -130,6 +132,10 @@ impl<'table, 'ast> Visitor<'ast, (), SemanticErrors<'ast>> for Analyser<'table, 
         &mut self,
         node: &'ast IdentifierASTNode,
     ) -> Result<(), SemanticErrors<'ast>> {
+        // check a compiler flag
+        if self.allow_free_variables {
+            return Ok(());
+        }
         // identifiers are the most important since all validation happens here
         // this should be obvious since the rest is just delegation
         // but thankfully it is easy

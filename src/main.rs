@@ -49,7 +49,7 @@ fn main() {
         Ok(result) => result,
         Err(err) => panic!("semantic table building failed with error: {}", err),
     };
-    let mut semantic_visitor = Analyser::new(&semantic_table);
+    let mut semantic_visitor = Analyser::new(&semantic_table, args_packet.allow_free_variables);
     match semantic_visitor.visit_program(&program_ast) {
         Ok(_) => {}
         Err(err) => panic!("semantic table building failed with error: {}", err),
