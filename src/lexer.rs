@@ -130,6 +130,17 @@ pub fn lex_line(line: &str, line_num: usize) -> Result<Vec<Token>, LexErrors> {
                     ),
                 });
             }
+            'λ' => {
+                lex_state.start = lex_state.current;
+                lex_state.current += 1;
+                returning_token.push(Token::Lambda {
+                    source: SourceLocation::new(
+                        line_num,
+                        lex_state.start,
+                        lex_state.current - lex_state.start,
+                    ),
+                });
+            }
 
             //this skips over and whitespace or control characrers such as space, tab or new line
             c if c.is_whitespace() || c.is_control() => {
