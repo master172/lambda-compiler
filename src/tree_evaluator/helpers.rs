@@ -174,10 +174,6 @@ pub fn rename_conflicting_binders(
 
             // if any on the free variables in the replacement contains a variable bound by the abstraction
             if replacement_free.contains(&bound) {
-                let body = ExpressionASTNode {
-                    expression: abstraction.expression.as_ref().clone(),
-                };
-
                 let new_name = name_generator.get_new_name(replacement);
 
                 replace_in_expression(&mut abstraction.expression, &bound, &new_name);
