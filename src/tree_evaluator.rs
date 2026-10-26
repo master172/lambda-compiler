@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::{
     parser::definitions::{
         AbstractionASTNode, ApplicationASTNode,
@@ -23,15 +25,18 @@ pub fn evaluate(program: &mut ProgramASTNode, definitions: &SemanticTable) {
             // definitions do not even exsist in standard lambda calculus
             Definition(_) => {}
             // all else is normalized
-            StatementExpression(expression) => normalize(expression, definitions),
+            StatementExpression(expression) => {
+                normalize(expression, definitions);
+            }
         };
     }
 }
 
 // simple enough again call reduce expression until it can no longer be reduced
 pub fn normalize(expression: &mut ExpressionASTNode, definitions: &SemanticTable) {
+    let mut bound_variables: HashSet<String> = HashSet::new();
     loop {
-        if reduce_expression_once(expression, definitions) == false {
+        if reduce_expression_once(expression, definitions, &mut bound_variables) == false {
             break;
         }
     }
@@ -41,12 +46,16 @@ pub fn normalize(expression: &mut ExpressionASTNode, definitions: &SemanticTable
 pub fn reduce_expression_once(
     expression: &mut ExpressionASTNode,
     definitions: &SemanticTable,
+    bound_variables: &mut HashSet<String>,
 ) -> bool {
     let modified: bool;
     match &mut expression.expression {
-        Abstraction(abstraction) => modified = reduce_abstraction_once(abstraction, definitions),
+        Abstraction(abstraction) => {
+            modified = reduce_abstraction_once(abstraction, definitions, bound_variables)
+        }
         Application(_) => {
-            modified = reduce_application_once(&mut expression.expression, definitions)
+            modified =
+                reduce_application_once(&mut expression.expression, definitions, bound_variables)
         }
     }
     return modified;
@@ -56,16 +65,34 @@ pub fn reduce_expression_once(
 pub fn reduce_abstraction_once(
     abstraction: &mut AbstractionASTNode,
     definitions: &SemanticTable,
+    bound_variables: &mut HashSet<String>,
 ) -> bool {
-    match abstraction.expression.as_mut() {
-        Abstraction(abstraction) => reduce_abstraction_once(abstraction, definitions),
-        Application(_) => reduce_application_once(&mut abstraction.expression, definitions),
+    // we add to bound variables here which is passed throughout the evaluation
+    let name = abstraction.identifier.name.clone();
+    let already_present = !bound_variables.insert(name.clone());
+
+    let modified = match abstraction.expression.as_mut() {
+        Abstraction(inner) => reduce_abstraction_once(inner, definitions, bound_variables),
+        Application(_) => {
+            reduce_application_once(&mut abstraction.expression, definitions, bound_variables)
+        }
+    };
+
+    // we only remove the bound variable if it was not already present during the recursion
+    // this prevents removing bound variables that were nested
+    if !already_present {
+        bound_variables.remove(&name);
     }
+    modified
 }
 
 // probbably the most important function since beta reduction happens here
 // and we check for alpha renaming here as well
-pub fn reduce_application_once(application: &mut Expressions, definitions: &SemanticTable) -> bool {
+pub fn reduce_application_once(
+    application: &mut Expressions,
+    definitions: &SemanticTable,
+    bound_variables: &mut HashSet<String>,
+) -> bool {
     // if this is not an application do not reduce just return false
     let Application(inner_application) = application else {
         return false;
@@ -88,7 +115,7 @@ pub fn reduce_application_once(application: &mut Expressions, definitions: &Sema
     }
     // if it is not an abstraction try reducing the identifier once if it reduces return true
     if !is_abstraction {
-        if reduce_atomic_once(&mut inner_application.left, definitions) {
+        if reduce_atomic_once(&mut inner_application.left, definitions, bound_variables) {
             return true;
         }
     }
@@ -124,7 +151,7 @@ pub fn reduce_application_once(application: &mut Expressions, definitions: &Sema
 
     // reduce right arguements if no beta substitution happens
     for arguement in &mut inner_application.right {
-        if reduce_atomic_once(arguement, definitions) {
+        if reduce_atomic_once(arguement, definitions, bound_variables) {
             return true;
         }
     }
@@ -132,18 +159,27 @@ pub fn reduce_application_once(application: &mut Expressions, definitions: &Sema
 }
 
 // this is mostly work delegation
-pub fn reduce_atomic_once(atomic: &mut AtomicASTNode, definitions: &SemanticTable) -> bool {
+pub fn reduce_atomic_once(
+    atomic: &mut AtomicASTNode,
+    definitions: &SemanticTable,
+    bound_variables: &mut HashSet<String>,
+) -> bool {
     let modified: bool;
     match &mut atomic.atom {
         Identifier(identifier) => {
-            if let Some(definition) = definitions.definitions.get(identifier.name.as_str()) {
+            // we use bound variables here to check wether a name is bound to an abstraction
+            if let Some(definition) = definitions.definitions.get(identifier.name.as_str())
+                && !bound_variables.contains(&identifier.name)
+            {
                 atomic.atom = AtomicExpression(definition.expression.clone());
                 modified = true;
             } else {
                 modified = false;
             }
         }
-        AtomicExpression(expression) => modified = reduce_expression_once(expression, definitions),
+        AtomicExpression(expression) => {
+            modified = reduce_expression_once(expression, definitions, bound_variables)
+        }
     }
     modified
 }
