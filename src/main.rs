@@ -59,7 +59,7 @@ fn main() {
     // semantic analysyis completed we can move to interpetation or code gen from here
 
     // we just evaluat the AST directly here
-    evaluate(&mut program_ast, &semantic_table);
+    evaluate(&mut program_ast, &semantic_table, args_packet.debug);
 
     // we can print it using a pretty printer
     let mut pretty_printer: PrettyPrinter = PrettyPrinter {};

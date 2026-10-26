@@ -92,12 +92,15 @@ pub fn get_new_name(
     expression: &ExpressionASTNode,
     replacement: &AtomicASTNode,
     reserved: &SemanticTable,
+    bound_variables: &mut HashSet<String>,
 ) -> String {
     let mut used = get_all_variable_names(expression);
     used.extend(get_all_atomic_variable_names(replacement));
+    used.extend(bound_variables.iter().cloned());
     for in_use in reserved.definitions.keys() {
         used.insert(in_use.to_string());
     }
+
     let mut counter: usize = 0;
 
     loop {

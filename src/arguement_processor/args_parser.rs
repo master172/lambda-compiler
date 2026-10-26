@@ -5,6 +5,7 @@ use crate::args_parser::ArgsError::{InvalidArguements, InvalidDir, NoDirectory, 
 pub struct ArgsPacket {
     pub source: String,
     pub allow_free_variables: bool,
+    pub debug: bool,
 }
 
 pub enum ArgsError {
@@ -38,6 +39,7 @@ pub fn create_args_packet() -> Result<ArgsPacket, ArgsError> {
     let mut source_packet: ArgsPacket = ArgsPacket {
         source: String::new(),
         allow_free_variables: false,
+        debug: false,
     };
 
     while let Some(value) = args.next() {
@@ -54,6 +56,9 @@ pub fn create_args_packet() -> Result<ArgsPacket, ArgsError> {
         }
         if value == "-f" {
             source_packet.allow_free_variables = true
+        }
+        if value == "-d" {
+            source_packet.debug = true
         }
     }
 
