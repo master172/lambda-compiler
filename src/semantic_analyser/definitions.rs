@@ -70,8 +70,9 @@ impl<'table, 'ast> Visitor<'ast, (), SemanticErrors> for Analyser<'table, 'ast> 
 
     fn visit_import(
         &mut self,
-        node: &'ast crate::parser::definitions::ImportASTNode,
+        _node: &'ast crate::parser::definitions::ImportASTNode,
     ) -> Result<(), SemanticErrors> {
+        // imports are checked a step before we can just pass them
         Ok(())
     }
 

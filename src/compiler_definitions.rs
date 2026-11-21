@@ -1,9 +1,12 @@
-use std::fmt;
+use std::{collections::HashMap, fmt};
 
 use crate::{
     arguement_processor::args_parser::{self, ArgsError},
     lexer::{self, definitions::LexErrors},
-    parser::{self, definitions::ParserErrors},
+    parser::{
+        self,
+        definitions::{ParserErrors, ProgramASTNode},
+    },
 };
 
 pub enum CompilerErrors {
@@ -37,5 +40,18 @@ impl From<ParserErrors> for CompilerErrors {
 impl From<LexErrors> for CompilerErrors {
     fn from(value: LexErrors) -> Self {
         Self::LexerErrors(value)
+    }
+}
+
+#[derive(Debug)]
+pub struct ModuleStore {
+    pub modules: HashMap<String, ProgramASTNode>,
+}
+
+impl ModuleStore {
+    pub fn new() -> Self {
+        Self {
+            modules: HashMap::new(),
+        }
     }
 }

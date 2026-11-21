@@ -90,6 +90,7 @@ pub fn lex_line(line: &str, line_num: usize) -> Result<Vec<Token>, LexErrors> {
                 lex_state.start = lex_state.current;
                 lex_state.current += 1;
                 if chars[lex_state.current] == '>' {
+                    lex_state.current += 1;
                     returning_token.push(Token::Arrow {
                         source: SourceLocation::new(
                             line_num,

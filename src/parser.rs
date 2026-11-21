@@ -289,6 +289,7 @@ fn parse_identifier_node(state: &mut ParserState) -> Result<IdentifierASTNode, P
 
     while let Some(Arrow { .. }) = state.peek() {
         state.advance();
+        identifier.name += "->";
         let current = state.advance();
         match current {
             Some(Var {

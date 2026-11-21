@@ -9,7 +9,7 @@ use crate::{
         args_parser::{self, ArgsPacket},
         packet_processor,
     },
-    compiler_definitions::CompilerErrors,
+    compiler_definitions::{CompilerErrors, ModuleStore},
     lexer::definitions::Token,
     parser::definitions::ProgramASTNode,
     pretty_printer::definitions::PrettyPrinter,
@@ -39,25 +39,37 @@ fn main() {
         Ok(val) => val,
         Err(e) => panic!("compiler failed with error {e}"),
     };
+    let program_name: String = match args_packet.source.into_string() {
+        Ok(val) => val,
+        Err(_) => panic!("failed to find main module name"),
+    };
 
     //create the AST for all the include files
-    let mut program_includes: HashMap<String, ProgramASTNode> = HashMap::new();
+    let mut program_includes: ModuleStore = ModuleStore::new();
     for argument in args_packet.modules.iter() {
         let module_ast = match parse_file(&argument) {
             Ok(val) => val,
             Err(e) => panic!("compiler failed with error {e}"),
         };
-        program_includes.insert(
+        program_includes.modules.insert(
             argument
                 .to_owned()
                 .into_string()
                 .expect("failed to convert path buf to string")
-                .replace(MAIN_SEPARATOR, "->"),
+                .to_string(),
             module_ast,
         );
     }
-    println!("found hash map: {:#?}", program_includes);
-
+    //println!("module store: {:#?}", program_includes);
+    let dependency_graph = match dependency_graph::create_dependency_graph(
+        &program_ast,
+        &program_name,
+        &program_includes,
+    ) {
+        Ok(val) => val,
+        Err(e) => panic!("failed to create dependency graph with error {e}"),
+    };
+    println!("Dependency graph {:#?}", dependency_graph);
     // run the semantic checker on the ast
     let semantic_table = match create_semantic_table(&program_ast) {
         Ok(result) => result,
