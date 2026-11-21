@@ -2,14 +2,16 @@ our context free grammer rules
 
 program ::= statemet* EOF
 
-statement ::= definition ";" | expression ";"
+statement ::= definition ";" | expression ";" | "import" Identifier ";"
 
-definition ::= IDENTIFIER "=" expression
+definition ::= Identifier "=" expression
 
 expression ::= abstraction | application
 
-abstraction ::= "lambda" IDENTIFIER "." expression
+abstraction ::= "lambda" Identifier "." expression
 
 application ::= atom atom*
 
-atom ::= IDENTIFIER | "(" expression ")"
+atom ::= Identifier | "(" expression ")"
+
+Identifier ::= IDENTIFIER ("->" IDENTIFIER)*

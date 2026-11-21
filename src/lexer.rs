@@ -86,6 +86,21 @@ pub fn lex_line(line: &str, line_num: usize) -> Result<Vec<Token>, LexErrors> {
                     ),
                 });
             }
+            '-' => {
+                lex_state.start = lex_state.current;
+                lex_state.current += 1;
+                if chars[lex_state.current] == '>' {
+                    returning_token.push(Token::Arrow {
+                        source: SourceLocation::new(
+                            line_num,
+                            lex_state.start,
+                            lex_state.current - lex_state.start,
+                        ),
+                    });
+                } else {
+                    return Err(LexErrors::InvalidModulePointer);
+                }
+            }
             '(' => {
                 lex_state.start = lex_state.current;
                 lex_state.current += 1;
@@ -209,6 +224,9 @@ pub fn match_key_word_to_token(
     //keywords need to be added here
     match key_word {
         "lambda" => Some(Token::Lambda {
+            source: SourceLocation::new(line, start, column - start),
+        }),
+        "import" => Some(Token::Import {
             source: SourceLocation::new(line, start, column - start),
         }),
         _ => None,

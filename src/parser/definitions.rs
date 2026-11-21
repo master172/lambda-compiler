@@ -18,6 +18,12 @@ pub struct StatementASTNode {
 pub enum Statemets {
     Definition(DefinitionASTNode),
     StatementExpression(ExpressionASTNode),
+    ImportStatement(ImportASTNode),
+}
+
+#[derive(Debug, Clone)]
+pub struct ImportASTNode {
+    pub identifier: IdentifierASTNode,
 }
 
 #[derive(Debug, Clone)]
@@ -33,7 +39,7 @@ pub struct ExpressionASTNode {
 
 #[derive(Debug, Clone)]
 pub struct IdentifierASTNode {
-    pub name: String,
+    pub name: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -72,10 +78,10 @@ pub enum ParserErrors {
     InvalidExpression { location: SourceLocation },
     InvalidAbstraction { location: SourceLocation },
     InvalidAtomic { location: SourceLocation },
+    InvalidIdentifier { location: SourceLocation },
     ExpectedDotToken { location: SourceLocation },
     ExpectedSemiColon { location: SourceLocation },
     ExpectedRightParenthesisToken { location: SourceLocation },
-    ExpectedIdentiferToken { location: SourceLocation },
     ExpectedAssignmentToken { location: SourceLocation },
 }
 
@@ -97,6 +103,14 @@ impl fmt::Display for ParserErrors {
                 write!(
                     f,
                     "Invalid definition at line {}, column {}",
+                    location.get_line() + 1,
+                    location.get_columm() + 1
+                )
+            }
+            ParserErrors::InvalidIdentifier { location } => {
+                write!(
+                    f,
+                    "Invalid identifier at line {}, column {}",
                     location.get_line() + 1,
                     location.get_columm() + 1
                 )
@@ -149,14 +163,6 @@ impl fmt::Display for ParserErrors {
                     location.get_columm() + 1
                 )
             }
-            ParserErrors::ExpectedIdentiferToken { location } => {
-                write!(
-                    f,
-                    "Expected an identifier at line {}, column {}",
-                    location.get_line() + 1,
-                    location.get_columm() + 1
-                )
-            }
             ParserErrors::ExpectedAssignmentToken { location } => {
                 write!(
                     f,
@@ -193,6 +199,15 @@ impl<'ast> Visitable<'ast> for DefinitionASTNode {
         V: crate::visitor::definitons::Visitor<'ast, R, E>,
     {
         visitor.visit_definition(self)
+    }
+}
+
+impl<'ast> Visitable<'ast> for ImportASTNode {
+    fn accept<V, R, E>(&'ast self, visitor: &mut V) -> Result<R, E>
+    where
+        V: crate::visitor::definitons::Visitor<'ast, R, E>,
+    {
+        visitor.visit_import(self)
     }
 }
 

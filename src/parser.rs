@@ -1,21 +1,21 @@
 use crate::{
     lexer::definitions::Token::{
-        self, Assignment, EOF, Lambda, LeftParen, RightParen, SemiColon, Var,
+        self, Arrow, Assignment, EOF, Import, Lambda, LeftParen, RightParen, SemiColon, Var,
     },
     parser::{
         definitions::{
             AbstractionASTNode, ApplicationASTNode, Atom, AtomicASTNode, DefinitionASTNode,
             ExpressionASTNode,
             Expressions::{Abstraction, Application},
-            IdentifierASTNode,
+            IdentifierASTNode, ImportASTNode,
             ParserErrors::{
-                self, ExpectedAssignmentToken, ExpectedDotToken, ExpectedIdentiferToken,
-                ExpectedRightParenthesisToken, ExpectedSemiColon, InvalidAbstraction,
-                InvalidAtomic, InvalidDefinition, InvalidExpression, InvalidStatmentInitalizer,
+                self, ExpectedAssignmentToken, ExpectedDotToken, ExpectedRightParenthesisToken,
+                ExpectedSemiColon, InvalidAbstraction, InvalidAtomic, InvalidDefinition,
+                InvalidExpression, InvalidIdentifier, InvalidStatmentInitalizer,
                 UnexpectedEOFError,
             },
             ProgramASTNode, StatementASTNode,
-            Statemets::{Definition, StatementExpression},
+            Statemets::{Definition, ImportStatement, StatementExpression},
         },
         state::ParserState,
     },
@@ -85,6 +85,13 @@ fn parse_statement_node(state: &mut ParserState) -> Result<Option<StatementASTNo
             };
             statement
         }
+        Import { .. } => {
+            let import: ImportASTNode = parse_import_node(state)?;
+            let statement: StatementASTNode = StatementASTNode {
+                statement: ImportStatement(import),
+            };
+            statement
+        }
         other => {
             return Err(InvalidStatmentInitalizer {
                 location: other.get_source(),
@@ -106,22 +113,24 @@ fn parse_statement_node(state: &mut ParserState) -> Result<Option<StatementASTNo
     Ok(Some(statement))
 }
 
-fn parse_defintion_node(state: &mut ParserState) -> Result<DefinitionASTNode, ParserErrors> {
-    let identifier = state.advance();
-    let identifier = match identifier {
-        Some(Var {
-            source: _source,
-            attribute,
-        }) => IdentifierASTNode {
-            name: attribute.to_string(),
-        },
+fn parse_import_node(state: &mut ParserState) -> Result<ImportASTNode, ParserErrors> {
+    let import = state.advance();
+    match import {
+        Some(Import { .. }) => {}
         Some(token) => {
             return Err(InvalidDefinition {
                 location: token.get_source(),
             });
         }
         None => return Err(UnexpectedEOFError),
-    };
+    }
+    let identifier = parse_identifier_node(state)?;
+    let import: ImportASTNode = ImportASTNode { identifier };
+    Ok(import)
+}
+
+fn parse_defintion_node(state: &mut ParserState) -> Result<DefinitionASTNode, ParserErrors> {
+    let identifier = parse_definition_identifier_node(state)?;
     let assignment = state.advance();
     match assignment {
         Some(Assignment { .. }) => {}
@@ -178,21 +187,7 @@ fn parse_abstraction_node(state: &mut ParserState) -> Result<AbstractionASTNode,
         }
         None => return Err(UnexpectedEOFError),
     };
-    let identifier = state.advance();
-    let identifier = match identifier {
-        Some(Var {
-            source: _source,
-            attribute,
-        }) => IdentifierASTNode {
-            name: attribute.to_string(),
-        },
-        Some(token) => {
-            return Err(ExpectedIdentiferToken {
-                location: token.get_source(),
-            });
-        }
-        None => return Err(UnexpectedEOFError),
-    };
+    let identifier = parse_identifier_node(state)?;
     let dot = state.advance();
     match dot {
         Some(Token::Dot { .. }) => {}
@@ -235,21 +230,17 @@ fn parse_application_node(state: &mut ParserState) -> Result<ApplicationASTNode,
 }
 
 fn parse_atomic_node(state: &mut ParserState) -> Result<AtomicASTNode, ParserErrors> {
-    let atomic = state.advance();
+    let atomic = state.peek();
     let atomic = match atomic {
-        Some(Var {
-            source: _source,
-            attribute,
-        }) => {
-            let identifier: IdentifierASTNode = IdentifierASTNode {
-                name: attribute.to_string(),
-            };
+        Some(Var { .. }) => {
+            let identifier: IdentifierASTNode = parse_identifier_node(state)?;
             let atomic: AtomicASTNode = AtomicASTNode {
                 atom: Atom::Identifier(identifier),
             };
             atomic
         }
         Some(LeftParen { .. }) => {
+            state.advance();
             let expression: ExpressionASTNode = parse_expression_node(state)?;
             let atomic: AtomicASTNode = AtomicASTNode {
                 atom: Atom::AtomicExpression(expression),
@@ -276,4 +267,65 @@ fn parse_atomic_node(state: &mut ParserState) -> Result<AtomicASTNode, ParserErr
     };
 
     Ok(atomic)
+}
+
+fn parse_identifier_node(state: &mut ParserState) -> Result<IdentifierASTNode, ParserErrors> {
+    let mut identifier: IdentifierASTNode = IdentifierASTNode { name: Vec::new() };
+    let current = state.advance();
+    match current {
+        Some(Var {
+            source: _source,
+            attribute,
+        }) => identifier.name.push(String::from(attribute)),
+        Some(token) => {
+            return Err(InvalidIdentifier {
+                location: token.get_source(),
+            });
+        }
+        None => return Err(UnexpectedEOFError),
+    };
+
+    while let Some(Arrow { .. }) = state.peek() {
+        state.advance();
+        let current = state.advance();
+        match current {
+            Some(Var {
+                source: _source,
+                attribute,
+            }) => identifier.name.push(String::from(attribute)),
+            Some(token) => {
+                return Err(InvalidIdentifier {
+                    location: token.get_source(),
+                });
+            }
+            None => return Err(UnexpectedEOFError),
+        };
+    }
+
+    Ok(identifier)
+}
+
+fn parse_definition_identifier_node(
+    state: &mut ParserState,
+) -> Result<IdentifierASTNode, ParserErrors> {
+    let mut identifier: IdentifierASTNode = IdentifierASTNode { name: Vec::new() };
+    let current = state.advance();
+    match current {
+        Some(Var {
+            source: _source,
+            attribute,
+        }) => identifier.name.push(String::from(attribute)),
+        Some(token) => {
+            return Err(InvalidIdentifier {
+                location: token.get_source(),
+            });
+        }
+        None => return Err(UnexpectedEOFError),
+    };
+
+    if let Some(Arrow { source }) = state.peek() {
+        return Err(InvalidIdentifier { location: *source });
+    }
+
+    Ok(identifier)
 }

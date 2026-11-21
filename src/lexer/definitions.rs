@@ -1,6 +1,8 @@
 use std::fmt::Display;
 
-use crate::lexer::definitions::LexErrors::{FailedToProcessLine, InvalidIdentifier};
+use crate::lexer::definitions::LexErrors::{
+    FailedToProcessLine, InvalidIdentifier, InvalidModulePointer,
+};
 
 // the members of source location are kept private to prevent accidental mutation
 #[derive(Debug, Clone, Copy)]
@@ -31,10 +33,16 @@ impl SourceLocation {
 
 #[derive(Debug)]
 pub enum Token {
+    Import {
+        source: SourceLocation,
+    },
     Lambda {
         source: SourceLocation,
     },
     Dot {
+        source: SourceLocation,
+    },
+    Arrow {
         source: SourceLocation,
     },
     LeftParen {
@@ -64,6 +72,8 @@ impl Token {
             Self::EOF { source } => *source,
             Self::Assignment { source } => *source,
             Self::Dot { source } => *source,
+            Self::Arrow { source } => *source,
+            Self::Import { source } => *source,
             Self::Lambda { source } => *source,
             Self::LeftParen { source } => *source,
             Self::RightParen { source } => *source,
@@ -79,6 +89,7 @@ impl Token {
 pub enum LexErrors {
     InvalidIdentifier,
     FailedToProcessLine,
+    InvalidModulePointer,
 }
 
 impl Display for LexErrors {
@@ -86,6 +97,7 @@ impl Display for LexErrors {
         match self {
             InvalidIdentifier => write!(f, "Invalid identifier name"),
             FailedToProcessLine => write!(f, "Failed to process line"),
+            InvalidModulePointer => write!(f, "expected \">\" after \"-\""),
         }
     }
 }

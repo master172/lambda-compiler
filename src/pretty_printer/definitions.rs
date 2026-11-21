@@ -2,7 +2,7 @@ use crate::{
     parser::definitions::{
         Atom::{AtomicExpression, Identifier},
         Expressions::{Abstraction, Application},
-        Statemets::{Definition, StatementExpression},
+        Statemets::{Definition, ImportStatement, StatementExpression},
     },
     visitor::definitons::{Visitable, Visitor},
 };
@@ -37,10 +37,20 @@ impl<'ast> Visitor<'ast, String, ()> for PrettyPrinter {
         match &node.statement {
             Definition(definition) => resultant += &definition.accept(self)?,
             StatementExpression(expression) => resultant += &expression.accept(self)?,
+            ImportStatement(import) => resultant += &import.accept(self)?,
         }
         Ok(resultant)
     }
 
+    fn visit_import(
+        &mut self,
+        node: &'ast crate::parser::definitions::ImportASTNode,
+    ) -> Result<String, ()> {
+        let mut resultant: String = String::new();
+        resultant += "Import ";
+        resultant += &node.identifier.accept(self)?;
+        Ok(resultant)
+    }
     // more delegation and addition but it is verified
     fn visit_definition(
         &mut self,
@@ -52,7 +62,11 @@ impl<'ast> Visitor<'ast, String, ()> for PrettyPrinter {
         let mut resultant: String = String::new();
         let expression = &node.expression;
         resultant += &expression.accept(self)?;
-        Ok(format!("{} = {}", node.identifier.name, resultant))
+        Ok(format!(
+            "{} = {}",
+            node.identifier.name.join("->"),
+            resultant
+        ))
     }
 
     // still just delegation and addition
@@ -78,7 +92,7 @@ impl<'ast> Visitor<'ast, String, ()> for PrettyPrinter {
             Abstraction(abstraction) => resultant += &abstraction.accept(self)?,
             Application(application) => resultant += &application.accept(self)?,
         };
-        Ok(format!("λ{}.{resultant}", node.identifier.name))
+        Ok(format!("λ{}.{resultant}", node.identifier.name.join("->")))
     }
 
     fn visit_application(
@@ -122,6 +136,6 @@ impl<'ast> Visitor<'ast, String, ()> for PrettyPrinter {
         &mut self,
         node: &'ast crate::parser::definitions::IdentifierASTNode,
     ) -> Result<String, ()> {
-        Ok(format!("{}", node.name))
+        Ok(format!("{}", node.name.join("->")))
     }
 }

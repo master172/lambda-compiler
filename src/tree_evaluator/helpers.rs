@@ -12,11 +12,14 @@ use crate::{
 // free variables are variables not bound by any argument in the abstraction
 // since only abstractions can bind variables just finding all variables in the AST
 // and then removing the ones the abstraction binds is enough
-pub fn get_free_variables(node: &ExpressionASTNode, semantics: &SemanticTable) -> HashSet<String> {
+pub fn get_free_variables(
+    node: &ExpressionASTNode,
+    semantics: &SemanticTable,
+) -> HashSet<Vec<String>> {
     return get_free_inner(&node.expression, semantics);
 }
 
-pub fn get_free_inner(expression: &Expressions, semantics: &SemanticTable) -> HashSet<String> {
+pub fn get_free_inner(expression: &Expressions, semantics: &SemanticTable) -> HashSet<Vec<String>> {
     match expression {
         Abstraction(abstraction) => {
             let mut variables = get_free_inner(abstraction.expression.as_ref(), &semantics);
@@ -36,7 +39,10 @@ pub fn get_free_inner(expression: &Expressions, semantics: &SemanticTable) -> Ha
     }
 }
 
-pub fn free_variables_atomic(atom: &AtomicASTNode, semantics: &SemanticTable) -> HashSet<String> {
+pub fn free_variables_atomic(
+    atom: &AtomicASTNode,
+    semantics: &SemanticTable,
+) -> HashSet<Vec<String>> {
     match &atom.atom {
         Identifier(identifier) => {
             if let Some(definition) = semantics.definitions.get(&identifier.name) {
@@ -51,13 +57,13 @@ pub fn free_variables_atomic(atom: &AtomicASTNode, semantics: &SemanticTable) ->
 
 // we need all names in the current scope to find out ones that are not in use
 // so that we can generate fresh new names
-pub fn get_all_variable_names(node: &ExpressionASTNode) -> HashSet<String> {
+pub fn get_all_variable_names(node: &ExpressionASTNode) -> HashSet<Vec<String>> {
     let mut all_names = HashSet::new();
     get_all_names_inner(&node.expression, &mut all_names);
     all_names
 }
 
-pub fn get_all_names_inner(expression: &Expressions, hash: &mut HashSet<String>) {
+pub fn get_all_names_inner(expression: &Expressions, hash: &mut HashSet<Vec<String>>) {
     match expression {
         Abstraction(abstraction) => {
             hash.insert(abstraction.identifier.name.clone());
@@ -73,7 +79,7 @@ pub fn get_all_names_inner(expression: &Expressions, hash: &mut HashSet<String>)
     }
 }
 
-pub fn collect_all_atomic_names(node: &AtomicASTNode, hash: &mut HashSet<String>) {
+pub fn collect_all_atomic_names(node: &AtomicASTNode, hash: &mut HashSet<Vec<String>>) {
     match &node.atom {
         Identifier(identifier) => {
             hash.insert(identifier.name.clone());
@@ -89,14 +95,14 @@ pub fn collect_all_atomic_names(node: &AtomicASTNode, hash: &mut HashSet<String>
 // expression is the one we are replacing with the replacement
 // and reserved is used for defintions
 pub struct NameGenerator {
-    used_names: HashSet<String>,
+    used_names: HashSet<Vec<String>>,
     counter: usize,
 }
 impl NameGenerator {
     pub fn new(expression: &ExpressionASTNode, reserved: &SemanticTable) -> Self {
         let mut used = get_all_variable_names(expression);
         for in_use in reserved.definitions.keys() {
-            used.insert(in_use.to_string());
+            used.insert(in_use.to_owned());
         }
 
         Self {
@@ -104,11 +110,11 @@ impl NameGenerator {
             counter: 0,
         }
     }
-    pub fn get_new_name(&mut self, replacement: &AtomicASTNode) -> String {
+    pub fn get_new_name(&mut self, replacement: &AtomicASTNode) -> Vec<String> {
         self.used_names
             .extend(get_all_atomic_variable_names(replacement));
         loop {
-            let candidate = format!("alpha{}", self.counter);
+            let candidate = Vec::from([format!("alpha{}", self.counter)]);
             self.counter += 1;
             if self.used_names.insert(candidate.clone()) {
                 return candidate;
@@ -117,7 +123,7 @@ impl NameGenerator {
     }
 }
 
-pub fn get_all_atomic_variable_names(atom: &AtomicASTNode) -> HashSet<String> {
+pub fn get_all_atomic_variable_names(atom: &AtomicASTNode) -> HashSet<Vec<String>> {
     let mut names = HashSet::new();
     collect_all_atomic_names(atom, &mut names);
     names
@@ -125,11 +131,11 @@ pub fn get_all_atomic_variable_names(atom: &AtomicASTNode) -> HashSet<String> {
 
 // renaming starts here, it follows the same pattern of recursive delegation down
 // from expression ast node, then abstractions and applications, then to atomics
-pub fn replace_in_place(node: &mut ExpressionASTNode, old: &str, new: &str) {
+pub fn replace_in_place(node: &mut ExpressionASTNode, old: &Vec<String>, new: &Vec<String>) {
     replace_in_expression(&mut node.expression, old, new);
 }
 
-pub fn replace_in_expression(expression: &mut Expressions, old: &str, new: &str) {
+pub fn replace_in_expression(expression: &mut Expressions, old: &Vec<String>, new: &Vec<String>) {
     match expression {
         Abstraction(abstraction) => {
             // if an inner abstraction contains the name we are trying to replace them we must stop
@@ -150,10 +156,10 @@ pub fn replace_in_expression(expression: &mut Expressions, old: &str, new: &str)
     }
 }
 
-pub fn replace_in_atomic(node: &mut AtomicASTNode, old: &str, new: &str) {
+pub fn replace_in_atomic(node: &mut AtomicASTNode, old: &Vec<String>, new: &Vec<String>) {
     match &mut node.atom {
         Identifier(identifier) => {
-            if identifier.name == old {
+            if identifier.name == *old {
                 identifier.name = new.to_owned();
             }
         }

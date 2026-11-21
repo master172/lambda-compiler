@@ -13,7 +13,7 @@ pub mod definitions;
 //no need for a tree evaluator here since definitons are statements
 pub fn create_semantic_table<'a>(
     program: &'a ProgramASTNode,
-) -> Result<SemanticTable, SemanticErrors<'a>> {
+) -> Result<SemanticTable, SemanticErrors> {
     let mut semantic_table: SemanticTable = SemanticTable {
         definitions: HashMap::new(),
     };
@@ -22,13 +22,13 @@ pub fn create_semantic_table<'a>(
             Definition(definition) => {
                 if semantic_table
                     .definitions
-                    .contains_key(definition.identifier.name.as_str())
+                    .contains_key(&definition.identifier.name)
                 {
-                    return Err(DuplicateDefinition(&definition.identifier.name));
+                    return Err(DuplicateDefinition(definition.identifier.name.join("->")));
                 }
                 semantic_table
                     .definitions
-                    .insert(definition.identifier.name.to_string(), definition.clone());
+                    .insert(definition.identifier.name.clone(), definition.clone());
             }
             _ => {}
         }
