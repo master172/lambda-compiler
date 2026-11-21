@@ -24,7 +24,7 @@ pub fn create_semantic_table<'a>(
                     .definitions
                     .contains_key(&definition.identifier.name)
                 {
-                    return Err(DuplicateDefinition(definition.identifier.name.join("->")));
+                    return Err(DuplicateDefinition(definition.identifier.name.to_owned()));
                 }
                 semantic_table
                     .definitions

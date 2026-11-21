@@ -39,7 +39,7 @@ pub struct ExpressionASTNode {
 
 #[derive(Debug, Clone)]
 pub struct IdentifierASTNode {
-    pub name: Vec<String>,
+    pub name: String,
 }
 
 #[derive(Debug, Clone)]

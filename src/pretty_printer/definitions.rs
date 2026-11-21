@@ -62,11 +62,7 @@ impl<'ast> Visitor<'ast, String, ()> for PrettyPrinter {
         let mut resultant: String = String::new();
         let expression = &node.expression;
         resultant += &expression.accept(self)?;
-        Ok(format!(
-            "{} = {}",
-            node.identifier.name.join("->"),
-            resultant
-        ))
+        Ok(format!("{} = {}", &node.identifier.name, resultant))
     }
 
     // still just delegation and addition
@@ -92,7 +88,7 @@ impl<'ast> Visitor<'ast, String, ()> for PrettyPrinter {
             Abstraction(abstraction) => resultant += &abstraction.accept(self)?,
             Application(application) => resultant += &application.accept(self)?,
         };
-        Ok(format!("λ{}.{resultant}", node.identifier.name.join("->")))
+        Ok(format!("λ{}.{resultant}", &node.identifier.name))
     }
 
     fn visit_application(
@@ -136,6 +132,6 @@ impl<'ast> Visitor<'ast, String, ()> for PrettyPrinter {
         &mut self,
         node: &'ast crate::parser::definitions::IdentifierASTNode,
     ) -> Result<String, ()> {
-        Ok(format!("{}", node.name.join("->")))
+        Ok(format!("{}", &node.name))
     }
 }

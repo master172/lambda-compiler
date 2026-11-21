@@ -36,7 +36,7 @@ pub fn evaluate(program: &mut ProgramASTNode, definitions: &SemanticTable, debug
 
 // simple enough again call reduce expression until it can no longer be reduced
 pub fn normalize(expression: &mut ExpressionASTNode, definitions: &SemanticTable, debug: bool) {
-    let mut bound_variables: HashSet<Vec<String>> = HashSet::new();
+    let mut bound_variables: HashSet<String> = HashSet::new();
     let mut name_generator: NameGenerator = NameGenerator::new(expression, definitions);
     loop {
         if debug {
@@ -58,7 +58,7 @@ pub fn normalize(expression: &mut ExpressionASTNode, definitions: &SemanticTable
 pub fn reduce_expression_once(
     expression: &mut ExpressionASTNode,
     definitions: &SemanticTable,
-    bound_variables: &mut HashSet<Vec<String>>,
+    bound_variables: &mut HashSet<String>,
     name_generator: &mut NameGenerator,
 ) -> bool {
     let modified: bool;
@@ -83,7 +83,7 @@ pub fn reduce_expression_once(
 pub fn reduce_abstraction_once(
     abstraction: &mut AbstractionASTNode,
     definitions: &SemanticTable,
-    bound_variables: &mut HashSet<Vec<String>>,
+    bound_variables: &mut HashSet<String>,
     name_generator: &mut NameGenerator,
 ) -> bool {
     // we add to bound variables here which is passed throughout the evaluation
@@ -115,7 +115,7 @@ pub fn reduce_abstraction_once(
 pub fn reduce_application_once(
     application: &mut Expressions,
     definitions: &SemanticTable,
-    bound_variables: &mut HashSet<Vec<String>>,
+    bound_variables: &mut HashSet<String>,
     name_generator: &mut NameGenerator,
 ) -> bool {
     // if this is not an application do not reduce just return false
@@ -192,14 +192,14 @@ pub fn reduce_application_once(
 pub fn reduce_atomic_once(
     atomic: &mut AtomicASTNode,
     definitions: &SemanticTable,
-    bound_variables: &mut HashSet<Vec<String>>,
+    bound_variables: &mut HashSet<String>,
     name_generator: &mut NameGenerator,
 ) -> bool {
     let modified: bool;
     match &mut atomic.atom {
         Identifier(identifier) => {
             // we use bound variables here to check wether a name is bound to an abstraction
-            if let Some(definition) = definitions.definitions.get(&identifier.name)
+            if let Some(definition) = definitions.definitions.get(identifier.name.as_str())
                 && !bound_variables.contains(&identifier.name)
             {
                 atomic.atom = AtomicExpression(definition.expression.clone());
@@ -221,13 +221,13 @@ pub fn substitute_expression(
     expression: &mut Expressions,
     replacement: &AtomicASTNode,
     definitions: &SemanticTable,
-    target: &Vec<String>,
+    target: &str,
     name_generator: &mut NameGenerator,
 ) {
     match expression {
         Abstraction(abstraction) => {
             // variable shadowed do not try to substitute further
-            let bound = &abstraction.identifier.name;
+            let bound = abstraction.identifier.name.clone();
             if bound == target {
                 return;
             }
@@ -247,7 +247,7 @@ pub fn substitute_expression(
 
             // if substituting the replacement would cause one of its free variables to become bound
             // we alpha rename it first
-            if replacement_free.contains(bound) {
+            if replacement_free.contains(&bound) {
                 let new_name = name_generator.get_new_name(replacement);
                 replace_in_expression(abstraction.expression.as_mut(), &bound, &new_name);
                 abstraction.identifier.name = new_name;
@@ -283,19 +283,19 @@ pub fn substitute_atomic(
     expression: &mut AtomicASTNode,
     replacement: &AtomicASTNode,
     definitions: &SemanticTable,
-    target: &Vec<String>,
+    target: &str,
     name_generator: &mut NameGenerator,
 ) {
     match &mut expression.atom {
         Identifier(identifier) => {
-            if identifier.name == *target {
+            if identifier.name == target {
                 *expression = replacement.clone();
                 return;
             }
 
             // we also need to check for expansions in globally defined definitions
             // so we substitute throughout its body as well
-            if let Some(definition) = definitions.definitions.get(&identifier.name) {
+            if let Some(definition) = definitions.definitions.get(identifier.name.as_str()) {
                 let mut expanded_defintion = definition.expression.clone();
 
                 rename_conflicting_binders(

@@ -30,12 +30,12 @@ impl Display for SemanticErrors {
 }
 
 pub struct SemanticTable {
-    pub definitions: HashMap<Vec<String>, DefinitionASTNode>,
+    pub definitions: HashMap<String, DefinitionASTNode>,
 }
 
 pub struct Analyser<'table, 'ast> {
     semantic_table: &'table SemanticTable,
-    bound_variables: Vec<&'ast Vec<String>>,
+    bound_variables: Vec<&'ast String>,
     allow_free_variables: bool,
 }
 
@@ -130,11 +130,10 @@ impl<'table, 'ast> Visitor<'ast, (), SemanticErrors> for Analyser<'table, 'ast> 
         // this should be obvious since the rest is just delegation
         // but thankfully it is easy
         // kust check if the identifier name exsists in the bound variables or the definitons table
-        let node_name: String = node.name.join("->");
         if !self.semantic_table.definitions.contains_key(&node.name)
             && !self.bound_variables.contains(&&node.name)
         {
-            return Err(UndeclaredIdentifier(node_name));
+            return Err(UndeclaredIdentifier(node.name.to_owned()));
         }
 
         Ok(())

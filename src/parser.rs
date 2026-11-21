@@ -270,13 +270,15 @@ fn parse_atomic_node(state: &mut ParserState) -> Result<AtomicASTNode, ParserErr
 }
 
 fn parse_identifier_node(state: &mut ParserState) -> Result<IdentifierASTNode, ParserErrors> {
-    let mut identifier: IdentifierASTNode = IdentifierASTNode { name: Vec::new() };
+    let mut identifier: IdentifierASTNode = IdentifierASTNode {
+        name: String::new(),
+    };
     let current = state.advance();
     match current {
         Some(Var {
             source: _source,
             attribute,
-        }) => identifier.name.push(String::from(attribute)),
+        }) => identifier.name += attribute,
         Some(token) => {
             return Err(InvalidIdentifier {
                 location: token.get_source(),
@@ -292,8 +294,9 @@ fn parse_identifier_node(state: &mut ParserState) -> Result<IdentifierASTNode, P
             Some(Var {
                 source: _source,
                 attribute,
-            }) => identifier.name.push(String::from(attribute)),
+            }) => identifier.name += attribute,
             Some(token) => {
+                identifier.name += "->";
                 return Err(InvalidIdentifier {
                     location: token.get_source(),
                 });
@@ -308,13 +311,15 @@ fn parse_identifier_node(state: &mut ParserState) -> Result<IdentifierASTNode, P
 fn parse_definition_identifier_node(
     state: &mut ParserState,
 ) -> Result<IdentifierASTNode, ParserErrors> {
-    let mut identifier: IdentifierASTNode = IdentifierASTNode { name: Vec::new() };
+    let mut identifier: IdentifierASTNode = IdentifierASTNode {
+        name: String::new(),
+    };
     let current = state.advance();
     match current {
         Some(Var {
             source: _source,
             attribute,
-        }) => identifier.name.push(String::from(attribute)),
+        }) => identifier.name += attribute,
         Some(token) => {
             return Err(InvalidIdentifier {
                 location: token.get_source(),
