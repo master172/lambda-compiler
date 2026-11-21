@@ -46,6 +46,9 @@ impl<'ast> Visitor<'ast, String, ()> for PrettyPrinter {
         &mut self,
         node: &'ast crate::parser::definitions::ImportASTNode,
     ) -> Result<String, ()> {
+        if self.print_defintion {
+            return Ok("".to_string());
+        }
         let mut resultant: String = String::new();
         resultant += "Import ";
         resultant += &node.identifier.accept(self)?;
