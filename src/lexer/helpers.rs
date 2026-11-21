@@ -19,5 +19,5 @@ pub fn is_valid_identifier_name(name: &str) -> bool {
 }
 
 pub fn is_identifier_terminator(c: char) -> bool {
-    c.is_whitespace() || matches!(c, '.' | '(' | ')' | ';' | '=')
+    c.is_whitespace() || matches!(c, '.' | '(' | ')' | ';' | '=' | '-')
 }
