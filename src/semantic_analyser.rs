@@ -12,6 +12,7 @@ use crate::{
     },
 };
 
+pub mod canonizer;
 pub mod definitions;
 
 //no need for a tree evaluator here since definitons are statements

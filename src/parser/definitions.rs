@@ -182,12 +182,26 @@ impl<'ast> Visitable<'ast> for ProgramASTNode {
     {
         visitor.visit_program(self)
     }
+
+    fn accept_mut<V, R, E>(&'ast mut self, visitor: &mut V) -> Result<R, E>
+    where
+        V: visitor::definitons::MutableVisitor<'ast, R, E>,
+    {
+        visitor.visit_program(self)
+    }
 }
 
 impl<'ast> Visitable<'ast> for StatementASTNode {
     fn accept<V, R, E>(&'ast self, visitor: &mut V) -> Result<R, E>
     where
         V: crate::visitor::definitons::Visitor<'ast, R, E>,
+    {
+        visitor.visit_statement(self)
+    }
+
+    fn accept_mut<V, R, E>(&'ast mut self, visitor: &mut V) -> Result<R, E>
+    where
+        V: visitor::definitons::MutableVisitor<'ast, R, E>,
     {
         visitor.visit_statement(self)
     }
@@ -200,12 +214,26 @@ impl<'ast> Visitable<'ast> for DefinitionASTNode {
     {
         visitor.visit_definition(self)
     }
+
+    fn accept_mut<V, R, E>(&'ast mut self, visitor: &mut V) -> Result<R, E>
+    where
+        V: visitor::definitons::MutableVisitor<'ast, R, E>,
+    {
+        visitor.visit_definition(self)
+    }
 }
 
 impl<'ast> Visitable<'ast> for ImportASTNode {
     fn accept<V, R, E>(&'ast self, visitor: &mut V) -> Result<R, E>
     where
         V: crate::visitor::definitons::Visitor<'ast, R, E>,
+    {
+        visitor.visit_import(self)
+    }
+
+    fn accept_mut<V, R, E>(&'ast mut self, visitor: &mut V) -> Result<R, E>
+    where
+        V: visitor::definitons::MutableVisitor<'ast, R, E>,
     {
         visitor.visit_import(self)
     }
@@ -218,12 +246,26 @@ impl<'ast> Visitable<'ast> for IdentifierASTNode {
     {
         visitor.visit_identifier(self)
     }
+
+    fn accept_mut<V, R, E>(&'ast mut self, visitor: &mut V) -> Result<R, E>
+    where
+        V: visitor::definitons::MutableVisitor<'ast, R, E>,
+    {
+        visitor.visit_identifier(self)
+    }
 }
 
 impl<'ast> Visitable<'ast> for ExpressionASTNode {
     fn accept<V, R, E>(&'ast self, visitor: &mut V) -> Result<R, E>
     where
         V: crate::visitor::definitons::Visitor<'ast, R, E>,
+    {
+        visitor.visit_expression(self)
+    }
+
+    fn accept_mut<V, R, E>(&'ast mut self, visitor: &mut V) -> Result<R, E>
+    where
+        V: visitor::definitons::MutableVisitor<'ast, R, E>,
     {
         visitor.visit_expression(self)
     }
@@ -236,6 +278,13 @@ impl<'ast> Visitable<'ast> for AbstractionASTNode {
     {
         visitor.visit_abstraction(self)
     }
+
+    fn accept_mut<V, R, E>(&'ast mut self, visitor: &mut V) -> Result<R, E>
+    where
+        V: visitor::definitons::MutableVisitor<'ast, R, E>,
+    {
+        visitor.visit_abstraction(self)
+    }
 }
 
 impl<'ast> Visitable<'ast> for ApplicationASTNode {
@@ -245,12 +294,26 @@ impl<'ast> Visitable<'ast> for ApplicationASTNode {
     {
         visitor.visit_application(self)
     }
+
+    fn accept_mut<V, R, E>(&'ast mut self, visitor: &mut V) -> Result<R, E>
+    where
+        V: visitor::definitons::MutableVisitor<'ast, R, E>,
+    {
+        visitor.visit_application(self)
+    }
 }
 
 impl<'ast> Visitable<'ast> for AtomicASTNode {
     fn accept<V, R, E>(&'ast self, visitor: &mut V) -> Result<R, E>
     where
         V: visitor::definitons::Visitor<'ast, R, E>,
+    {
+        visitor.visit_atomic(self)
+    }
+
+    fn accept_mut<V, R, E>(&'ast mut self, visitor: &mut V) -> Result<R, E>
+    where
+        V: visitor::definitons::MutableVisitor<'ast, R, E>,
     {
         visitor.visit_atomic(self)
     }

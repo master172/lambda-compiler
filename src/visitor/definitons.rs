@@ -15,8 +15,24 @@ pub trait Visitor<'ast, R, E> {
     fn visit_atomic(&mut self, node: &'ast AtomicASTNode) -> Result<R, E>;
 }
 
+pub trait MutableVisitor<'ast, R, E> {
+    fn visit_program(&mut self, node: &'ast mut ProgramASTNode) -> Result<R, E>;
+    fn visit_statement(&mut self, node: &'ast mut StatementASTNode) -> Result<R, E>;
+    fn visit_expression(&mut self, node: &'ast mut ExpressionASTNode) -> Result<R, E>;
+    fn visit_definition(&mut self, node: &'ast mut DefinitionASTNode) -> Result<R, E>;
+    fn visit_import(&mut self, node: &'ast mut ImportASTNode) -> Result<R, E>;
+    fn visit_abstraction(&mut self, node: &'ast mut AbstractionASTNode) -> Result<R, E>;
+    fn visit_application(&mut self, node: &'ast mut ApplicationASTNode) -> Result<R, E>;
+    fn visit_identifier(&mut self, node: &'ast mut IdentifierASTNode) -> Result<R, E>;
+    fn visit_atomic(&mut self, node: &'ast mut AtomicASTNode) -> Result<R, E>;
+}
+
 pub trait Visitable<'ast> {
     fn accept<V, R, E>(&'ast self, visitor: &mut V) -> Result<R, E>
     where
         V: Visitor<'ast, R, E>;
+
+    fn accept_mut<V, R, E>(&'ast mut self, visitor: &mut V) -> Result<R, E>
+    where
+        V: MutableVisitor<'ast, R, E>;
 }
