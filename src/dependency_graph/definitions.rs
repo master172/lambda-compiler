@@ -1,10 +1,10 @@
 use std::{
     collections::{HashMap, HashSet},
-    fmt::{self, write},
+    fmt::{self},
 };
 
 use crate::dependency_graph::definitions::DependencyErrors::{
-    InvalidPath, ModuleNotProvided, NoDirectory, PathConversionError,
+    ModuleNotProvided, NoDirectory, PathConversionError,
 };
 
 #[derive(Debug)]
@@ -19,7 +19,6 @@ pub struct DependencyGraph {
 }
 
 pub enum DependencyErrors {
-    InvalidPath(String),
     ModuleNotProvided(String),
     NoDirectory,
     PathConversionError(String),
@@ -28,7 +27,6 @@ pub enum DependencyErrors {
 impl fmt::Display for DependencyErrors {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            InvalidPath(path) => write!(f, "invalid path {}", path),
             ModuleNotProvided(module) => write!(f, "module not provided {}", module),
             NoDirectory => write!(f, "no directory for curren module"),
             PathConversionError(path) => write!(f, "failed to parse path {path} to string"),

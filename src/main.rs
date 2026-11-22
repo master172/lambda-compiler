@@ -1,8 +1,4 @@
-use std::{
-    collections::HashMap,
-    fs::File,
-    path::{MAIN_SEPARATOR, PathBuf},
-};
+use std::{fs::File, path::PathBuf};
 
 use crate::{
     arguement_processor::{
@@ -10,6 +6,7 @@ use crate::{
         packet_processor,
     },
     compiler_definitions::{CompilerErrors, ModuleStore},
+    dependency_graph::helpers::depth_first_search,
     lexer::definitions::Token,
     parser::definitions::ProgramASTNode,
     pretty_printer::definitions::PrettyPrinter,
@@ -69,7 +66,11 @@ fn main() {
         Ok(val) => val,
         Err(e) => panic!("failed to create dependency graph with error {e}"),
     };
-    println!("Dependency graph {:#?}", dependency_graph);
+    //println!("Dependency graph {:#?}", dependency_graph);
+    match depth_first_search(&dependency_graph) {
+        Ok(()) => {}
+        Err(err) => panic!("Dependency error detected {err}"),
+    }
     // run the semantic checker on the ast
     let semantic_table = match create_semantic_table(&program_ast) {
         Ok(result) => result,
