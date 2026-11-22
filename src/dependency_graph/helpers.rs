@@ -27,8 +27,9 @@ impl fmt::Display for DFSErrors {
         }
     }
 }
-pub fn depth_first_search(graph: &DependencyGraph) -> Result<(), DFSErrors> {
+pub fn depth_first_search(graph: &DependencyGraph) -> Result<Vec<String>, DFSErrors> {
     let mut visit_map: HashMap<String, VisitStates> = HashMap::new();
+    let mut sorted: Vec<String> = Vec::new();
     // first mark all as unvisited
     for (name, _module) in &graph.modules {
         visit_map.insert(name.to_owned(), VisitStates::UnVisisted);
@@ -40,18 +41,20 @@ pub fn depth_first_search(graph: &DependencyGraph) -> Result<(), DFSErrors> {
             .ok_or(DependnecyNotFound(name.clone()))?;
         if state == &VisitStates::UnVisisted {
             visit_map.insert(name.to_owned(), VisitStates::Visiting);
-            dfs_helper(graph, module, &mut visit_map)?;
+            dfs_helper(graph, module, &mut visit_map, &mut sorted)?;
             visit_map.insert(name.to_owned(), VisitStates::Visited);
+            sorted.push(name.to_owned());
         }
     }
 
-    Ok(())
+    Ok(sorted)
 }
 
 pub fn dfs_helper(
     graph: &DependencyGraph,
     module: &Module,
     visit_map: &mut HashMap<String, VisitStates>,
+    sorted: &mut Vec<String>,
 ) -> Result<(), DFSErrors> {
     for name in &module.imports {
         let visited = visit_map
@@ -71,8 +74,9 @@ pub fn dfs_helper(
             .modules
             .get(name)
             .ok_or(DependnecyNotFound(name.to_owned()))?;
-        dfs_helper(graph, import_module, visit_map)?;
+        dfs_helper(graph, import_module, visit_map, sorted)?;
         visit_map.insert(name.clone(), VisitStates::Visited);
+        sorted.push(name.to_owned());
     }
     Ok(())
 }
