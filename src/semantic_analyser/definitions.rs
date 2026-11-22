@@ -8,7 +8,7 @@ use crate::{
         Statemets::{Definition, ImportStatement, StatementExpression},
     },
     semantic_analyser::definitions::SemanticErrors::{
-        DuplicateDefinition, ModuleNotFound, UndeclaredIdentifier,
+        AmbiguousIdentifier, DuplicateDefinition, ModuleNotFound, UndeclaredIdentifier,
     },
     visitor::definitons::Visitable,
 };
@@ -21,6 +21,7 @@ use crate::visitor::definitons::Visitor;
 
 #[derive(Debug)]
 pub enum SemanticErrors {
+    AmbiguousIdentifier(String),
     UndeclaredIdentifier(String, String),
     DuplicateDefinition(String),
     ModuleNotFound(String),
@@ -34,6 +35,9 @@ impl Display for SemanticErrors {
             }
             DuplicateDefinition(name) => write!(f, "duplicate definiton: {name}"),
             ModuleNotFound(name) => write!(f, "coud not find module {name} for semantic analyis"),
+            AmbiguousIdentifier(name) => {
+                write!(f, "ambiguous identifier: {name}")
+            }
         }
     }
 }
@@ -106,9 +110,6 @@ impl<'table, 'ast> Analyser<'table> {
         if name.contains("->") {
             return self.resolve_qualified_identifier(name);
         }
-        if self.semantic_store.global.definitions.contains_key(name) {
-            return Ok(true);
-        }
 
         // determine current scope, resolve scopes table and imports
         let (local_table, import) = match &self.current_module {
@@ -129,7 +130,8 @@ impl<'table, 'ast> Analyser<'table> {
         if local_table.definitions.contains_key(name) {
             return Ok(true);
         }
-        // then check every imported module
+        // Search all directly imported modules.
+        let mut found = false;
         if let Some(imports) = import {
             for imported_module in imports {
                 let table = self
@@ -138,11 +140,14 @@ impl<'table, 'ast> Analyser<'table> {
                     .get(imported_module)
                     .ok_or_else(|| ModuleNotFound(imported_module.clone()))?;
                 if table.definitions.contains_key(name) {
-                    return Ok(true);
+                    if found {
+                        return Err(AmbiguousIdentifier(name.to_string()));
+                    }
+                    found = true;
                 }
             }
         }
-        Ok(false)
+        Ok(found)
     }
 
     fn is_module_visible(&self, module_name: &str) -> bool {
@@ -283,7 +288,7 @@ impl<'table, 'ast> Visitor<'ast, (), SemanticErrors> for Analyser<'table> {
         // this should be obvious since the rest is just delegation
         // but thankfully it is easy
         // kust check if the identifier name exsists in the bound variables or the definitons table
-        if !self.definition_exists(&node.name)? && !self.bound_variables.contains(&&node.name) {
+        if !self.definition_exists(&node.name)? && !self.bound_variables.contains(&node.name) {
             let module_name = self
                 .current_module
                 .clone()
