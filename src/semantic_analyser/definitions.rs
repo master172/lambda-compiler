@@ -7,7 +7,9 @@ use crate::{
         IdentifierASTNode, ProgramASTNode, StatementASTNode,
         Statemets::{Definition, ImportStatement, StatementExpression},
     },
-    semantic_analyser::definitions::SemanticErrors::{DuplicateDefinition, UndeclaredIdentifier},
+    semantic_analyser::definitions::SemanticErrors::{
+        DuplicateDefinition, ModuleNotFound, UndeclaredIdentifier,
+    },
     visitor::definitons::Visitable,
 };
 use std::{collections::HashMap, fmt::Display};
@@ -18,6 +20,7 @@ use crate::visitor::definitons::Visitor;
 pub enum SemanticErrors {
     UndeclaredIdentifier(String),
     DuplicateDefinition(String),
+    ModuleNotFound(String),
 }
 
 impl Display for SemanticErrors {
@@ -25,24 +28,32 @@ impl Display for SemanticErrors {
         match self {
             UndeclaredIdentifier(name) => write!(f, "undeclared identifer: {name}"),
             DuplicateDefinition(name) => write!(f, "duplicate definiton: {name}"),
+            ModuleNotFound(name) => write!(f, "coud not find module {name} for semantic analyis"),
         }
     }
 }
 
+#[derive(Debug)]
+pub struct SemanticStore {
+    pub modules: HashMap<String, SemanticTable>,
+    pub global: SemanticTable,
+}
+
+#[derive(Debug)]
 pub struct SemanticTable {
     pub definitions: HashMap<String, DefinitionASTNode>,
 }
 
 pub struct Analyser<'table, 'ast> {
-    semantic_table: &'table SemanticTable,
+    semantic_store: &'table SemanticStore,
     bound_variables: Vec<&'ast String>,
     allow_free_variables: bool,
 }
 
 impl<'table, 'ast> Analyser<'table, 'ast> {
-    pub fn new(table: &'table SemanticTable, allow_free_variables: bool) -> Self {
+    pub fn new(store: &'table SemanticStore, allow_free_variables: bool) -> Self {
         Self {
-            semantic_table: table,
+            semantic_store: store,
             bound_variables: vec![],
             allow_free_variables,
         }
@@ -131,7 +142,11 @@ impl<'table, 'ast> Visitor<'ast, (), SemanticErrors> for Analyser<'table, 'ast> 
         // this should be obvious since the rest is just delegation
         // but thankfully it is easy
         // kust check if the identifier name exsists in the bound variables or the definitons table
-        if !self.semantic_table.definitions.contains_key(&node.name)
+        if !self
+            .semantic_store
+            .global
+            .definitions
+            .contains_key(&node.name)
             && !self.bound_variables.contains(&&node.name)
         {
             return Err(UndeclaredIdentifier(node.name.to_owned()));

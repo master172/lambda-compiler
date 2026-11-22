@@ -5,7 +5,7 @@ use crate::{
         args_parser::{self, ArgsPacket},
         packet_processor,
     },
-    compiler_definitions::{CompilerErrors, ModuleStore},
+    compiler_definitions::{CompilerErrors, ModuleStore, normalize_identifier},
     dependency_graph::helpers::depth_first_search,
     lexer::definitions::Token,
     parser::definitions::ProgramASTNode,
@@ -57,7 +57,7 @@ fn main() {
             module_ast,
         );
     }
-    //println!("module store: {:#?}", program_includes);
+    //create the dependnecy graph form the module store, and program ast
     let dependency_graph = match dependency_graph::create_dependency_graph(
         &program_ast,
         &program_name,
@@ -66,29 +66,38 @@ fn main() {
         Ok(val) => val,
         Err(e) => panic!("failed to create dependency graph with error {e}"),
     };
-    //println!("Dependency graph {:#?}", dependency_graph);
-    let topological_dependnecy_array = match depth_first_search(&dependency_graph) {
+    // search for cyclic imports and create a topological sorted array for dependencies
+    let mut topological_dependnecy_array = match depth_first_search(&dependency_graph) {
         Ok(val) => val,
         Err(err) => panic!("Dependency error detected {err}"),
     };
+    // format the module store to use namespaced keys instead of directories
     program_includes = match program_includes.format_to_namespaced() {
         Err(e) => panic!("module store formatting error {e}"),
         Ok(val) => val,
     };
-    // run the semantic checker on the ast
-    let semantic_table = match create_semantic_table(&program_ast) {
+    // remove the source file from the topological array since a global table is created for it seperately
+    let formatted_program_name: String = normalize_identifier(&program_name)
+        .unwrap_or_else(|err| panic!("could not format program name {err}"));
+    topological_dependnecy_array.retain(|x| x != &formatted_program_name);
+    // create the proper semantic store
+    let semantic_store = match create_semantic_table(
+        &mut program_includes,
+        &topological_dependnecy_array,
+        &program_ast,
+    ) {
         Ok(result) => result,
-        Err(err) => panic!("semantic table building failed with error: {}", err),
+        Err(err) => panic!("semantic store building failed with error: {}", err),
     };
-    let mut semantic_visitor = Analyser::new(&semantic_table, args_packet.allow_free_variables);
+    let mut semantic_visitor = Analyser::new(&semantic_store, args_packet.allow_free_variables);
     match semantic_visitor.visit_program(&program_ast) {
         Ok(_) => {}
-        Err(err) => panic!("semantic table building failed with error: {}", err),
+        Err(err) => panic!("semantic store analysis failed with error: {}", err),
     };
     // semantic analysyis completed we can move to interpetation or code gen from here
 
     // we just evaluat the AST directly here
-    evaluate(&mut program_ast, &semantic_table, args_packet.debug);
+    evaluate(&mut program_ast, &semantic_store, args_packet.debug);
 
     // we can print it using a pretty printer
     let mut pretty_printer: PrettyPrinter = PrettyPrinter {

@@ -89,7 +89,7 @@ impl ModuleStore {
     }
 }
 
-fn normalize_identifier(identifier: &str) -> Result<String, FormatErrors> {
+pub fn normalize_identifier(identifier: &str) -> Result<String, FormatErrors> {
     let root = env::current_dir().map_err(|_| FormatErrors::NoDirectory)?;
     let path = PathBuf::from(identifier);
     let relative = path
