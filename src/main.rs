@@ -10,7 +10,11 @@ use crate::{
     lexer::definitions::Token,
     parser::definitions::ProgramASTNode,
     pretty_printer::definitions::PrettyPrinter,
-    semantic_analyser::{create_semantic_table, definitions::Analyser},
+    semantic_analyser::{
+        canonizer::{Canonicalizer, definitions::CanoniclaizationContext},
+        create_semantic_table,
+        definitions::Analyser,
+    },
     tree_evaluator::evaluate,
     visitor::definitons::Visitor,
 };
@@ -81,7 +85,7 @@ fn main() {
         .unwrap_or_else(|err| panic!("could not format program name {err}"));
     topological_dependnecy_array.retain(|x| x != &formatted_program_name);
     // create the proper semantic store
-    let semantic_store = match create_semantic_table(
+    let mut semantic_store = match create_semantic_table(
         &mut program_includes,
         &topological_dependnecy_array,
         &program_ast,
@@ -95,7 +99,14 @@ fn main() {
         Err(err) => panic!("semantic store analysis failed with error: {}", err),
     };
     // semantic analysyis completed we can move to interpetation or code gen from here
-    // first flatten the store
+    // first canonicalize the names in the identifier
+    let context: CanoniclaizationContext = CanoniclaizationContext::new(&semantic_store);
+    let mut canonizer = Canonicalizer::new(context);
+    match canonizer.canonicalize(&mut semantic_store, &mut program_ast) {
+        Ok(_) => {}
+        Err(e) => panic!("canonization failed with error {e}"),
+    };
+    // then flatten the store
     let semantic_table = semantic_store.flatten();
     // we just evaluat the AST directly here
     evaluate(&mut program_ast, &semantic_table, args_packet.debug);
