@@ -90,7 +90,7 @@ fn main() {
         Err(err) => panic!("semantic store building failed with error: {}", err),
     };
     let mut semantic_visitor = Analyser::new(&semantic_store, args_packet.allow_free_variables);
-    match semantic_visitor.visit_program(&program_ast) {
+    match semantic_visitor.analyse(&program_ast) {
         Ok(_) => {}
         Err(err) => panic!("semantic store analysis failed with error: {}", err),
     };
