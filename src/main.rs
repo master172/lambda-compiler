@@ -95,9 +95,10 @@ fn main() {
         Err(err) => panic!("semantic store analysis failed with error: {}", err),
     };
     // semantic analysyis completed we can move to interpetation or code gen from here
-
+    // first flatten the store
+    let semantic_table = semantic_store.flatten();
     // we just evaluat the AST directly here
-    evaluate(&mut program_ast, &semantic_store, args_packet.debug);
+    evaluate(&mut program_ast, &semantic_table, args_packet.debug);
 
     // we can print it using a pretty printer
     let mut pretty_printer: PrettyPrinter = PrettyPrinter {

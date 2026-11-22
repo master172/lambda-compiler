@@ -9,7 +9,7 @@ use crate::{
         ProgramASTNode,
         Statemets::{Definition, ImportStatement, StatementExpression},
     },
-    semantic_analyser::definitions::{SemanticStore, SemanticTable},
+    semantic_analyser::definitions::SemanticTable,
     tree_evaluator::helpers::{
         NameGenerator, free_variables_atomic, get_free_variables, rename_conflicting_binders,
         replace_in_expression,
@@ -19,7 +19,7 @@ use crate::{
 mod helpers;
 
 // simple enough just normalize all expression
-pub fn evaluate(program: &mut ProgramASTNode, definitions: &SemanticStore, debug: bool) {
+pub fn evaluate(program: &mut ProgramASTNode, definitions: &SemanticTable, debug: bool) {
     for statement in &mut program.statements {
         match &mut statement.statement {
             // no need to normalize a definition
@@ -28,7 +28,7 @@ pub fn evaluate(program: &mut ProgramASTNode, definitions: &SemanticStore, debug
             ImportStatement(_) => {}
             // all else is normalized
             StatementExpression(expression) => {
-                normalize(expression, &definitions.global, debug);
+                normalize(expression, &definitions, debug);
             }
         };
     }

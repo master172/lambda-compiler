@@ -56,6 +56,22 @@ impl SemanticStore {
             module_imports: HashMap::new(),
         }
     }
+
+    pub fn flatten(self) -> SemanticTable {
+        let mut semantic_table: SemanticTable = SemanticTable::new();
+        for (name, defintion) in self.global.definitions {
+            semantic_table.definitions.insert(name, defintion);
+        }
+        for (module_name, table) in self.modules {
+            for (name, defintion) in table.definitions {
+                semantic_table
+                    .definitions
+                    .insert(format!("{module_name}->{name}"), defintion);
+            }
+        }
+
+        semantic_table
+    }
 }
 #[derive(Debug)]
 pub struct SemanticTable {
