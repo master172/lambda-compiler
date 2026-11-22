@@ -45,7 +45,7 @@ pub fn create_dependency_graph(
         match &statement.statement {
             ImportStatement(import) => {
                 let identifier = &import.identifier.name;
-                if let Some(module) = graph.modules.get_mut(&formatted_main_identifier) {
+                if let Some(module) = graph.modules.get_mut(identifier) {
                     let formatted_identifier = identifier.to_string();
                     module.imports.insert(formatted_identifier);
                 } else {
