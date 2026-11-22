@@ -71,6 +71,10 @@ fn main() {
         Ok(val) => val,
         Err(err) => panic!("Dependency error detected {err}"),
     };
+    program_includes = match program_includes.format_to_namespaced() {
+        Err(e) => panic!("module store formatting error {e}"),
+        Ok(val) => val,
+    };
     // run the semantic checker on the ast
     let semantic_table = match create_semantic_table(&program_ast) {
         Ok(result) => result,
