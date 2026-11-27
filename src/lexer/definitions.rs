@@ -39,6 +39,9 @@ pub enum Token {
     Lambda {
         source: SourceLocation,
     },
+    Phi {
+        source: SourceLocation,
+    },
     Dot {
         source: SourceLocation,
     },
@@ -75,6 +78,7 @@ impl Token {
             Self::Arrow { source } => *source,
             Self::Import { source } => *source,
             Self::Lambda { source } => *source,
+            Self::Phi { source } => *source,
             Self::LeftParen { source } => *source,
             Self::RightParen { source } => *source,
             Self::SemiColon { source } => *source,
