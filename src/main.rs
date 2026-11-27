@@ -114,12 +114,17 @@ fn main() {
     // create the runtime before evaluation
     let mut runtime: BasicRuntime = BasicRuntime::new();
     // we just evaluat the AST directly here
-    evaluate(
+    match evaluate(
         &mut program_ast,
         &semantic_table,
         args_packet.debug,
         &mut runtime,
-    );
+    ) {
+        Ok(_) => {}
+        Err(e) => {
+            panic!("Runtime failed with error: {e}")
+        }
+    };
 
     // we can print it using a pretty printer in debug prininting mode
     if args_packet.debug_printing {

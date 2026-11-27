@@ -11,7 +11,7 @@ use crate::{
         },
         runtime_abstractions::AbstractionReducable,
     },
-    runtime::definitions::Runtime,
+    runtime::definitions::{Runtime, RuntimeErrors},
     semantic_analyser::definitions::SemanticTable,
     tree_evaluator::helpers::{
         NameGenerator, free_variables_atomic, get_free_variables, rename_conflicting_binders,
@@ -27,7 +27,7 @@ pub fn evaluate<R: Runtime>(
     definitions: &SemanticTable,
     debug: bool,
     runtime: &mut R,
-) {
+) -> Result<(), RuntimeErrors> {
     for statement in &mut program.statements {
         match &mut statement.statement {
             // no need to normalize a definition
@@ -36,10 +36,11 @@ pub fn evaluate<R: Runtime>(
             ImportStatement(_) => {}
             // all else is normalized
             StatementExpression(expression) => {
-                normalize(expression, &definitions, debug, runtime);
+                normalize(expression, &definitions, debug, runtime)?;
             }
         };
     }
+    Ok(())
 }
 
 // simple enough again call reduce expression until it can no longer be reduced
@@ -48,7 +49,7 @@ pub fn normalize<R: Runtime>(
     definitions: &SemanticTable,
     debug: bool,
     runtime: &mut R,
-) {
+) -> Result<(), RuntimeErrors> {
     let mut bound_variables: HashSet<String> = HashSet::new();
     let mut name_generator: NameGenerator = NameGenerator::new(expression, definitions);
     loop {
@@ -61,11 +62,12 @@ pub fn normalize<R: Runtime>(
             &mut bound_variables,
             &mut name_generator,
             runtime,
-        ) == false
+        )? == false
         {
             break;
         }
     }
+    Ok(())
 }
 
 // just delegate the work to the respective functions
@@ -75,7 +77,7 @@ pub fn reduce_expression_once<R: Runtime>(
     bound_variables: &mut HashSet<String>,
     name_generator: &mut NameGenerator,
     runtime: &mut R,
-) -> bool {
+) -> Result<bool, RuntimeErrors> {
     let modified: bool;
     match &mut expression.expression {
         Abstraction(abstraction) => {
@@ -85,7 +87,7 @@ pub fn reduce_expression_once<R: Runtime>(
                 bound_variables,
                 name_generator,
                 runtime,
-            )
+            )?
         }
         PhiAbstraction(abstraction) => {
             modified = reduce_abstraction_once(
@@ -94,7 +96,7 @@ pub fn reduce_expression_once<R: Runtime>(
                 bound_variables,
                 name_generator,
                 runtime,
-            )
+            )?
         }
         Application(_) => {
             modified = reduce_application_once(
@@ -103,10 +105,10 @@ pub fn reduce_expression_once<R: Runtime>(
                 bound_variables,
                 name_generator,
                 runtime,
-            )
+            )?
         }
     }
-    return modified;
+    return Ok(modified);
 }
 
 // just recursively reducing abstractions until all you have is applications
@@ -116,7 +118,7 @@ pub fn reduce_abstraction_once<T: AbstractionReducable, R: Runtime>(
     bound_variables: &mut HashSet<String>,
     name_generator: &mut NameGenerator,
     runtime: &mut R,
-) -> bool {
+) -> Result<bool, RuntimeErrors> {
     // we add to bound variables here which is passed throughout the evaluation
     let name = abstraction.identifier().name.clone();
     let already_present = !bound_variables.insert(name.clone());
@@ -153,10 +155,10 @@ pub fn reduce_application_once<R: Runtime>(
     bound_variables: &mut HashSet<String>,
     name_generator: &mut NameGenerator,
     runtime: &mut R,
-) -> bool {
+) -> Result<bool, RuntimeErrors> {
     // if this is not an application do not reduce just return false
     let Application(inner_application) = application else {
-        return false;
+        return Ok(false);
     };
 
     // first start with reducing the left expression if it is an expression
@@ -171,7 +173,7 @@ pub fn reduce_application_once<R: Runtime>(
     if inner_application.right.is_empty() {
         if let AtomicExpression(inner) = &inner_application.left.atom {
             *application = inner.expression.clone();
-            return true;
+            return Ok(true);
         }
     }
     // if it is not an abstraction try reducing the identifier once if it reduces return true
@@ -182,8 +184,8 @@ pub fn reduce_application_once<R: Runtime>(
             bound_variables,
             name_generator,
             runtime,
-        ) {
-            return true;
+        )? {
+            return Ok(true);
         }
     }
 
@@ -206,16 +208,15 @@ pub fn reduce_application_once<R: Runtime>(
                         bound_variables,
                         name_generator,
                         runtime,
-                    ) {
-                        return true;
+                    )? {
+                        return Ok(true);
                     }
                     // otherwise tell the runtime to do something with it, and then beta reduce it
-                    runtime
-                        .phi(
-                            abstraction.communication_stream_id,
-                            &inner_application.right[0],
-                        )
-                        .unwrap();
+                    runtime.phi(
+                        abstraction.communication_stream_id,
+                        &inner_application.right[0],
+                    )?;
+
                     abstraction.beta_reduce(
                         &mut inner_application.right,
                         definitions,
@@ -230,7 +231,7 @@ pub fn reduce_application_once<R: Runtime>(
 
     if let Some(result) = result {
         *application = result;
-        return true;
+        return Ok(true);
     }
     // reduce right arguements if no beta substitution happens
     for arguement in &mut inner_application.right {
@@ -240,11 +241,11 @@ pub fn reduce_application_once<R: Runtime>(
             bound_variables,
             name_generator,
             runtime,
-        ) {
-            return true;
+        )? {
+            return Ok(true);
         }
     }
-    false
+    Ok(false)
 }
 
 // this is mostly work delegation
@@ -254,7 +255,7 @@ pub fn reduce_atomic_once<R: Runtime>(
     bound_variables: &mut HashSet<String>,
     name_generator: &mut NameGenerator,
     runtime: &mut R,
-) -> bool {
+) -> Result<bool, RuntimeErrors> {
     let modified: bool;
     match &mut atomic.atom {
         Identifier(identifier) => {
@@ -275,10 +276,10 @@ pub fn reduce_atomic_once<R: Runtime>(
                 bound_variables,
                 name_generator,
                 runtime,
-            )
+            )?
         }
     }
-    modified
+    Ok(modified)
 }
 
 // this is just mostly reduce until you can delegate to atomics
