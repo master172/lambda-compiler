@@ -1,20 +1,22 @@
 use crate::{
     lexer::definitions::Token::{
-        self, Arrow, Assignment, EOF, Import, Lambda, LeftParen, RightParen, SemiColon, Var,
+        self, Arrow, Assignment, EOF, Import, Integer, Lambda, LeftParen, Phi, RightParen,
+        SemiColon, Var,
     },
     parser::{
         definitions::{
             AbstractionASTNode, ApplicationASTNode, Atom, AtomicASTNode, DefinitionASTNode,
             ExpressionASTNode,
-            Expressions::{Abstraction, Application},
+            Expressions::{Abstraction, Application, PhiAbstraction},
             IdentifierASTNode, ImportASTNode,
             ParserErrors::{
-                self, ExpectedAssignmentToken, ExpectedDotToken, ExpectedRightParenthesisToken,
-                ExpectedSemiColon, InvalidAbstraction, InvalidAtomic, InvalidDefinition,
-                InvalidExpression, InvalidIdentifier, InvalidStatmentInitalizer,
+                self, ExpectedAssignmentToken, ExpectedDotToken, ExpectedIntegerToken,
+                ExpectedLeftParenthesisToken, ExpectedRightParenthesisToken, ExpectedSemiColon,
+                InvalidAbstraction, InvalidAtomic, InvalidDefinition, InvalidExpression,
+                InvalidIdentifier, InvalidPhiAbstraction, InvalidStatmentInitalizer,
                 UnexpectedEOFError,
             },
-            ProgramASTNode, StatementASTNode,
+            PhiAbstractionASTNode, ProgramASTNode, StatementASTNode,
             Statemets::{Definition, ImportStatement, StatementExpression},
         },
         state::ParserState,
@@ -22,6 +24,7 @@ use crate::{
 };
 
 pub mod definitions;
+pub mod runtime_abstractions;
 mod state;
 
 pub fn parse(tokens: Vec<Token>) -> Result<ProgramASTNode, ParserErrors> {
@@ -42,7 +45,6 @@ fn parse_program_node(state: &mut ParserState) -> Result<Option<ProgramASTNode>,
     return Ok(Some(program));
 }
 
-//TODO add semi colon consumption here
 fn parse_statement_node(state: &mut ParserState) -> Result<Option<StatementASTNode>, ParserErrors> {
     let token = state.peek();
     //eof reached stop parsing
@@ -56,6 +58,13 @@ fn parse_statement_node(state: &mut ParserState) -> Result<Option<StatementASTNo
             return Ok(None);
         }
         Lambda { .. } => {
+            let expression: ExpressionASTNode = parse_expression_node(state)?;
+            let statement: StatementASTNode = StatementASTNode {
+                statement: StatementExpression(expression),
+            };
+            statement
+        }
+        Phi { .. } => {
             let expression: ExpressionASTNode = parse_expression_node(state)?;
             let statement: StatementASTNode = StatementASTNode {
                 statement: StatementExpression(expression),
@@ -159,6 +168,13 @@ fn parse_expression_node(state: &mut ParserState) -> Result<ExpressionASTNode, P
             };
             expression
         }
+        Some(Phi { .. }) => {
+            let abstraction: PhiAbstractionASTNode = parse_phi_abstraction_node(state)?;
+            let expression: ExpressionASTNode = ExpressionASTNode {
+                expression: definitions::Expressions::PhiAbstraction(abstraction),
+            };
+            expression
+        }
         Some(Var { .. }) | Some(LeftParen { .. }) => {
             let application: ApplicationASTNode = parse_application_node(state)?;
             let expression: ExpressionASTNode = ExpressionASTNode {
@@ -174,6 +190,81 @@ fn parse_expression_node(state: &mut ParserState) -> Result<ExpressionASTNode, P
         None => return Err(UnexpectedEOFError),
     };
     Ok(expression_ast_node)
+}
+
+fn parse_phi_abstraction_node(
+    state: &mut ParserState,
+) -> Result<PhiAbstractionASTNode, ParserErrors> {
+    let phi_token = state.advance();
+    // technicaly a redundant check but why not
+    match phi_token {
+        Some(Phi { .. }) => {}
+        Some(token) => {
+            return Err(InvalidPhiAbstraction {
+                location: token.get_source(),
+            });
+        }
+        None => return Err(UnexpectedEOFError),
+    };
+    // see if the left bracket exists
+    let left_bracket = state.advance();
+    match left_bracket {
+        Some(LeftParen { .. }) => {}
+        Some(token) => {
+            return Err(ExpectedLeftParenthesisToken {
+                location: token.get_source(),
+            });
+        }
+        None => return Err(UnexpectedEOFError),
+    };
+    // parse and verify existence of integer literal
+    let literal = match state.advance() {
+        Some(Integer {
+            source: _source,
+            literal,
+        }) => *literal,
+        Some(token) => {
+            return Err(ExpectedIntegerToken {
+                location: token.get_source(),
+            });
+        }
+        None => return Err(UnexpectedEOFError),
+    };
+    // make sure right bracket exists
+    let right_bracket = state.advance();
+    match right_bracket {
+        Some(RightParen { .. }) => {}
+        Some(token) => {
+            return Err(ExpectedRightParenthesisToken {
+                location: token.get_source(),
+            });
+        }
+        None => return Err(UnexpectedEOFError),
+    };
+    // parse identifier and make the remaining of the phi abstraction
+    let identifier = parse_identifier_node(state)?;
+    let dot = state.advance();
+    match dot {
+        Some(Token::Dot { .. }) => {}
+        Some(token) => {
+            return Err(ExpectedDotToken {
+                location: token.get_source(),
+            });
+        }
+        None => return Err(UnexpectedEOFError),
+    };
+    let expression: ExpressionASTNode = parse_expression_node(state)?;
+    let expression = match expression.expression {
+        Abstraction(abstraction) => Abstraction(abstraction),
+        Application(application) => Application(application),
+        PhiAbstraction(abstraction) => PhiAbstraction(abstraction),
+    };
+    let abstraction: PhiAbstractionASTNode = PhiAbstractionASTNode {
+        communication_stream_id: literal,
+        identifier,
+        expression: Box::new(expression),
+    };
+    Ok(abstraction)
 }
 
 fn parse_abstraction_node(state: &mut ParserState) -> Result<AbstractionASTNode, ParserErrors> {
@@ -202,6 +293,7 @@ fn parse_abstraction_node(state: &mut ParserState) -> Result<AbstractionASTNode,
     let expression = match expression.expression {
         Abstraction(abstraction) => Abstraction(abstraction),
         Application(application) => Application(application),
+        PhiAbstraction(abstraction) => PhiAbstraction(abstraction),
     };
     let abstraction: AbstractionASTNode = AbstractionASTNode {
         identifier,

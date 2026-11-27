@@ -1,7 +1,7 @@
 use crate::{
     parser::definitions::{
         Atom::{AtomicExpression, Identifier},
-        Expressions::{Abstraction, Application},
+        Expressions::{Abstraction, Application, PhiAbstraction},
         Statemets::{Definition, ImportStatement, StatementExpression},
     },
     visitor::definitons::{Visitable, Visitor},
@@ -78,6 +78,7 @@ impl<'ast> Visitor<'ast, String, ()> for PrettyPrinter {
         match &node.expression {
             Abstraction(abstraction) => resultant += &abstraction.accept(self)?,
             Application(application) => resultant += &application.accept(self)?,
+            PhiAbstraction(abstraction) => resultant += &abstraction.accept(self)?,
         }
         Ok(resultant)
     }
@@ -90,8 +91,25 @@ impl<'ast> Visitor<'ast, String, ()> for PrettyPrinter {
         match &node.expression.as_ref() {
             Abstraction(abstraction) => resultant += &abstraction.accept(self)?,
             Application(application) => resultant += &application.accept(self)?,
+            PhiAbstraction(abstraction) => resultant += &abstraction.accept(self)?,
         };
         Ok(format!("λ{}.{resultant}", &node.identifier.name))
+    }
+
+    fn visit_phi_abstraction(
+        &mut self,
+        node: &'ast crate::parser::definitions::PhiAbstractionASTNode,
+    ) -> Result<String, ()> {
+        let mut resultant: String = String::new();
+        match &node.expression.as_ref() {
+            Abstraction(abstraction) => resultant += &abstraction.accept(self)?,
+            Application(application) => resultant += &application.accept(self)?,
+            PhiAbstraction(abstraction) => resultant += &abstraction.accept(self)?,
+        };
+        Ok(format!(
+            "φ({}) {}.{resultant}",
+            &node.communication_stream_id, &node.identifier.name
+        ))
     }
 
     fn visit_application(

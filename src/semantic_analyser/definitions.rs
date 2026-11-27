@@ -3,7 +3,7 @@ use crate::{
         AbstractionASTNode, ApplicationASTNode,
         Atom::{AtomicExpression, Identifier},
         AtomicASTNode, DefinitionASTNode, ExpressionASTNode,
-        Expressions::{Abstraction, Application},
+        Expressions::{Abstraction, Application, PhiAbstraction},
         IdentifierASTNode, ProgramASTNode, StatementASTNode,
         Statemets::{Definition, ImportStatement, StatementExpression},
     },
@@ -246,6 +246,7 @@ impl<'table, 'ast> Visitor<'ast, (), SemanticErrors> for Analyser<'table> {
         match &node.expression {
             Abstraction(abstraction) => abstraction.accept(self)?,
             Application(application) => application.accept(self)?,
+            PhiAbstraction(abstraction) => abstraction.accept(self)?,
         }
         Ok(())
     }
@@ -256,6 +257,23 @@ impl<'table, 'ast> Visitor<'ast, (), SemanticErrors> for Analyser<'table> {
         let result = match &node.expression.as_ref() {
             Abstraction(abstraction) => abstraction.accept(self),
             Application(application) => application.accept(self),
+            PhiAbstraction(abstraction) => abstraction.accept(self),
+        };
+        self.bound_variables.pop();
+        result
+    }
+
+    fn visit_phi_abstraction(
+        &mut self,
+        node: &'ast crate::parser::definitions::PhiAbstractionASTNode,
+    ) -> Result<(), SemanticErrors> {
+        // basically all runtime abstractions are the same for semantic analysis
+        // this is mostly delegation again and some variable bound checking
+        self.bound_variables.push(node.identifier.name.clone());
+        let result = match &node.expression.as_ref() {
+            Abstraction(abstraction) => abstraction.accept(self),
+            Application(application) => application.accept(self),
+            PhiAbstraction(abstraction) => abstraction.accept(self),
         };
         self.bound_variables.pop();
         result

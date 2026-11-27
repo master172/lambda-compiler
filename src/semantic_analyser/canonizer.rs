@@ -1,7 +1,7 @@
 use crate::{
     parser::definitions::{
         Atom::{AtomicExpression, Identifier},
-        Expressions::{Abstraction, Application},
+        Expressions::{Abstraction, Application, PhiAbstraction},
         ProgramASTNode,
         Statemets::{Definition, ImportStatement, StatementExpression},
     },
@@ -105,6 +105,7 @@ impl<'ast> MutableVisitor<'ast, (), SemanticErrors> for Canonicalizer {
         match &mut node.expression {
             Abstraction(abstraction) => abstraction.accept_mut(self)?,
             Application(application) => application.accept_mut(self)?,
+            PhiAbstraction(abstraction) => abstraction.accept_mut(self)?,
         }
         Ok(())
     }
@@ -118,6 +119,23 @@ impl<'ast> MutableVisitor<'ast, (), SemanticErrors> for Canonicalizer {
         let result = match node.expression.as_mut() {
             Abstraction(abstraction) => abstraction.accept_mut(self),
             Application(application) => application.accept_mut(self),
+            PhiAbstraction(abstraction) => abstraction.accept_mut(self),
+        };
+
+        self.bound_variables.pop();
+        result
+    }
+
+    fn visit_phi_abstraction(
+        &mut self,
+        node: &'ast mut crate::parser::definitions::PhiAbstractionASTNode,
+    ) -> Result<(), SemanticErrors> {
+        self.bound_variables.push(node.identifier.name.clone());
+
+        let result = match node.expression.as_mut() {
+            Abstraction(abstraction) => abstraction.accept_mut(self),
+            Application(application) => application.accept_mut(self),
+            PhiAbstraction(abstraction) => abstraction.accept_mut(self),
         };
 
         self.bound_variables.pop();

@@ -4,7 +4,7 @@ use crate::{
     parser::definitions::{
         Atom::{AtomicExpression, Identifier},
         AtomicASTNode, ExpressionASTNode,
-        Expressions::{self, Abstraction, Application},
+        Expressions::{self, Abstraction, Application, PhiAbstraction},
     },
     semantic_analyser::definitions::SemanticTable,
 };
@@ -19,6 +19,13 @@ pub fn get_free_variables(node: &ExpressionASTNode, semantics: &SemanticTable) -
 pub fn get_free_inner(expression: &Expressions, semantics: &SemanticTable) -> HashSet<String> {
     match expression {
         Abstraction(abstraction) => {
+            let mut variables = get_free_inner(abstraction.expression.as_ref(), &semantics);
+            // remove bound variables
+            variables.remove(&abstraction.identifier.name);
+            variables
+        }
+        // this should be same as regular abstractions for all inner variables
+        PhiAbstraction(abstraction) => {
             let mut variables = get_free_inner(abstraction.expression.as_ref(), &semantics);
             // remove bound variables
             variables.remove(&abstraction.identifier.name);
@@ -60,6 +67,11 @@ pub fn get_all_variable_names(node: &ExpressionASTNode) -> HashSet<String> {
 pub fn get_all_names_inner(expression: &Expressions, hash: &mut HashSet<String>) {
     match expression {
         Abstraction(abstraction) => {
+            hash.insert(abstraction.identifier.name.clone());
+            get_all_names_inner(&abstraction.expression, hash)
+        }
+        // this should also be the same for all runtime abstractions
+        PhiAbstraction(abstraction) => {
             hash.insert(abstraction.identifier.name.clone());
             get_all_names_inner(&abstraction.expression, hash)
         }
@@ -140,6 +152,14 @@ pub fn replace_in_expression(expression: &mut Expressions, old: &str, new: &str)
 
             replace_in_expression(&mut abstraction.expression, old, new);
         }
+        PhiAbstraction(abstraction) => {
+            // same here just plain repitition
+            if &abstraction.identifier.name == old {
+                return;
+            }
+
+            replace_in_expression(&mut abstraction.expression, old, new);
+        }
         Application(application) => {
             replace_in_atomic(&mut application.left, old, new);
 
@@ -169,6 +189,26 @@ pub fn rename_conflicting_binders(
 ) {
     match expression {
         Abstraction(abstraction) => {
+            let bound = abstraction.identifier.name.clone();
+            let replacement_free = free_variables_atomic(replacement, definitions);
+
+            // if any on the free variables in the replacement contains a variable bound by the abstraction
+            if replacement_free.contains(&bound) {
+                let new_name = name_generator.get_new_name(replacement);
+
+                replace_in_expression(&mut abstraction.expression, &bound, &new_name);
+
+                abstraction.identifier.name = new_name;
+            }
+            rename_conflicting_binders(
+                &mut abstraction.expression,
+                replacement,
+                definitions,
+                name_generator,
+            );
+        }
+        // somehow all helper functions do not care about the distinguishing factor of runtime abstractions?
+        PhiAbstraction(abstraction) => {
             let bound = abstraction.identifier.name.clone();
             let replacement_free = free_variables_atomic(replacement, definitions);
 

@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use crate::lexer::definitions::LexErrors::{
-    FailedToProcessLine, InvalidIdentifier, InvalidModulePointer,
+    FailedToProcessLine, InvalidIdentifier, InvalidIntLiteral, InvalidModulePointer,
 };
 
 // the members of source location are kept private to prevent accidental mutation
@@ -67,6 +67,10 @@ pub enum Token {
     EOF {
         source: SourceLocation,
     },
+    Integer {
+        source: SourceLocation,
+        literal: i64,
+    },
 }
 
 impl Token {
@@ -86,6 +90,10 @@ impl Token {
                 source,
                 attribute: _attribute,
             } => *source,
+            Self::Integer {
+                source,
+                literal: _literal,
+            } => *source,
         }
     }
 }
@@ -94,6 +102,7 @@ pub enum LexErrors {
     InvalidIdentifier,
     FailedToProcessLine,
     InvalidModulePointer,
+    InvalidIntLiteral,
 }
 
 impl Display for LexErrors {
@@ -102,6 +111,7 @@ impl Display for LexErrors {
             InvalidIdentifier => write!(f, "Invalid identifier name"),
             FailedToProcessLine => write!(f, "Failed to process line"),
             InvalidModulePointer => write!(f, "expected \">\" after \"-\""),
+            InvalidIntLiteral => write!(f, "failed to parse int"),
         }
     }
 }

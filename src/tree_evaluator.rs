@@ -1,13 +1,16 @@
 use std::collections::HashSet;
 
 use crate::{
-    parser::definitions::{
-        AbstractionASTNode, ApplicationASTNode,
-        Atom::{AtomicExpression, Identifier},
-        AtomicASTNode, ExpressionASTNode,
-        Expressions::{self, Abstraction, Application},
-        ProgramASTNode,
-        Statemets::{Definition, ImportStatement, StatementExpression},
+    parser::{
+        definitions::{
+            ApplicationASTNode,
+            Atom::{AtomicExpression, Identifier},
+            AtomicASTNode, ExpressionASTNode,
+            Expressions::{self, Abstraction, Application, PhiAbstraction},
+            ProgramASTNode,
+            Statemets::{Definition, ImportStatement, StatementExpression},
+        },
+        runtime_abstractions::AbstractionReducable,
     },
     semantic_analyser::definitions::SemanticTable,
     tree_evaluator::helpers::{
@@ -67,6 +70,10 @@ pub fn reduce_expression_once(
             modified =
                 reduce_abstraction_once(abstraction, definitions, bound_variables, name_generator)
         }
+        PhiAbstraction(abstraction) => {
+            modified =
+                reduce_abstraction_once(abstraction, definitions, bound_variables, name_generator)
+        }
         Application(_) => {
             modified = reduce_application_once(
                 &mut expression.expression,
@@ -80,22 +87,25 @@ pub fn reduce_expression_once(
 }
 
 // just recursively reducing abstractions until all you have is applications
-pub fn reduce_abstraction_once(
-    abstraction: &mut AbstractionASTNode,
+pub fn reduce_abstraction_once<T: AbstractionReducable>(
+    abstraction: &mut T,
     definitions: &SemanticTable,
     bound_variables: &mut HashSet<String>,
     name_generator: &mut NameGenerator,
 ) -> bool {
     // we add to bound variables here which is passed throughout the evaluation
-    let name = abstraction.identifier.name.clone();
+    let name = abstraction.identifier().name.clone();
     let already_present = !bound_variables.insert(name.clone());
 
-    let modified = match abstraction.expression.as_mut() {
+    let modified = match abstraction.expression_mut() {
         Abstraction(inner) => {
             reduce_abstraction_once(inner, definitions, bound_variables, name_generator)
         }
+        PhiAbstraction(inner) => {
+            reduce_abstraction_once(inner, definitions, bound_variables, name_generator)
+        }
         Application(_) => reduce_application_once(
-            &mut abstraction.expression,
+            abstraction.expression_mut(),
             definitions,
             bound_variables,
             name_generator,
@@ -226,35 +236,18 @@ pub fn substitute_expression(
 ) {
     match expression {
         Abstraction(abstraction) => {
-            // variable shadowed do not try to substitute further
-            let bound = abstraction.identifier.name.clone();
-            if bound == target {
-                return;
-            }
-
-            // this also handles alpha renaming
-            // first if the variable is bound no change occurs
-            let body = ExpressionASTNode {
-                expression: abstraction.expression.as_ref().clone(),
-            };
-
-            if !get_free_variables(&body, &definitions).contains(target) {
-                return;
-            }
-
-            // see which variables can be replaced in the replacement
-            let replacement_free = free_variables_atomic(replacement, &definitions);
-
-            // if substituting the replacement would cause one of its free variables to become bound
-            // we alpha rename it first
-            if replacement_free.contains(&bound) {
-                let new_name = name_generator.get_new_name(replacement);
-                replace_in_expression(abstraction.expression.as_mut(), &bound, &new_name);
-                abstraction.identifier.name = new_name;
-            }
-
-            substitute_expression(
-                abstraction.expression.as_mut(),
+            substitute_abstraction(
+                abstraction,
+                replacement,
+                definitions,
+                target,
+                name_generator,
+            );
+        }
+        // hopefully there is a better way to do this
+        PhiAbstraction(abstraction) => {
+            substitute_abstraction(
+                abstraction,
                 replacement,
                 definitions,
                 target,
@@ -277,6 +270,48 @@ pub fn substitute_expression(
     }
 }
 
+pub fn substitute_abstraction<T: AbstractionReducable>(
+    abstraction: &mut T,
+    replacement: &AtomicASTNode,
+    definitions: &SemanticTable,
+    target: &str,
+    name_generator: &mut NameGenerator,
+) {
+    // variable shadowed do not try to substitute further
+    let bound = abstraction.identifier().name.clone();
+    if bound == target {
+        return;
+    }
+
+    // this also handles alpha renaming
+    // first if the variable is bound no change occurs
+    let body = ExpressionASTNode {
+        expression: abstraction.expression().clone(),
+    };
+
+    if !get_free_variables(&body, &definitions).contains(target) {
+        return;
+    }
+
+    // see which variables can be replaced in the replacement
+    let replacement_free = free_variables_atomic(replacement, &definitions);
+
+    // if substituting the replacement would cause one of its free variables to become bound
+    // we alpha rename it first
+    if replacement_free.contains(&bound) {
+        let new_name = name_generator.get_new_name(replacement);
+        replace_in_expression(abstraction.expression_mut(), &bound, &new_name);
+        abstraction.identifier_mut().name = new_name;
+    }
+
+    substitute_expression(
+        abstraction.expression_mut(),
+        replacement,
+        definitions,
+        target,
+        name_generator,
+    );
+}
 // replace atomic identifiers with their expressions
 // otherwise keep replacing the expressions with targets
 pub fn substitute_atomic(

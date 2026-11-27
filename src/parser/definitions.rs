@@ -45,11 +45,19 @@ pub struct IdentifierASTNode {
 #[derive(Debug, Clone)]
 pub enum Expressions {
     Abstraction(AbstractionASTNode),
+    PhiAbstraction(PhiAbstractionASTNode),
     Application(ApplicationASTNode),
 }
 
 #[derive(Debug, Clone)]
 pub struct AbstractionASTNode {
+    pub identifier: IdentifierASTNode,
+    pub expression: Box<Expressions>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PhiAbstractionASTNode {
+    pub communication_stream_id: i64,
     pub identifier: IdentifierASTNode,
     pub expression: Box<Expressions>,
 }
@@ -77,12 +85,15 @@ pub enum ParserErrors {
     InvalidDefinition { location: SourceLocation },
     InvalidExpression { location: SourceLocation },
     InvalidAbstraction { location: SourceLocation },
+    InvalidPhiAbstraction { location: SourceLocation },
     InvalidAtomic { location: SourceLocation },
     InvalidIdentifier { location: SourceLocation },
     ExpectedDotToken { location: SourceLocation },
     ExpectedSemiColon { location: SourceLocation },
     ExpectedRightParenthesisToken { location: SourceLocation },
+    ExpectedLeftParenthesisToken { location: SourceLocation },
     ExpectedAssignmentToken { location: SourceLocation },
+    ExpectedIntegerToken { location: SourceLocation },
 }
 
 impl fmt::Display for ParserErrors {
@@ -131,6 +142,14 @@ impl fmt::Display for ParserErrors {
                     location.get_columm() + 1
                 )
             }
+            ParserErrors::InvalidPhiAbstraction { location } => {
+                write!(
+                    f,
+                    "Invalid phi abstraction at line {}, column {}",
+                    location.get_line() + 1,
+                    location.get_columm() + 1
+                )
+            }
             ParserErrors::InvalidAtomic { location } => {
                 write!(
                     f,
@@ -163,10 +182,26 @@ impl fmt::Display for ParserErrors {
                     location.get_columm() + 1
                 )
             }
+            ParserErrors::ExpectedLeftParenthesisToken { location } => {
+                write!(
+                    f,
+                    "Expected ')' at line {}, column {}",
+                    location.get_line() + 1,
+                    location.get_columm() + 1
+                )
+            }
             ParserErrors::ExpectedAssignmentToken { location } => {
                 write!(
                     f,
                     "Expected '=' at line {}, column {}",
+                    location.get_line() + 1,
+                    location.get_columm() + 1
+                )
+            }
+            ParserErrors::ExpectedIntegerToken { location } => {
+                write!(
+                    f,
+                    "Expected an integer at line {}, column {}",
                     location.get_line() + 1,
                     location.get_columm() + 1
                 )
@@ -287,6 +322,21 @@ impl<'ast> Visitable<'ast> for AbstractionASTNode {
     }
 }
 
+impl<'ast> Visitable<'ast> for PhiAbstractionASTNode {
+    fn accept<V, R, E>(&'ast self, visitor: &mut V) -> Result<R, E>
+    where
+        V: crate::visitor::definitons::Visitor<'ast, R, E>,
+    {
+        visitor.visit_phi_abstraction(self)
+    }
+
+    fn accept_mut<V, R, E>(&'ast mut self, visitor: &mut V) -> Result<R, E>
+    where
+        V: visitor::definitons::MutableVisitor<'ast, R, E>,
+    {
+        visitor.visit_phi_abstraction(self)
+    }
+}
 impl<'ast> Visitable<'ast> for ApplicationASTNode {
     fn accept<V, R, E>(&'ast self, visitor: &mut V) -> Result<R, E>
     where

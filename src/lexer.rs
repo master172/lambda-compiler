@@ -174,6 +174,13 @@ pub fn lex_line(line: &str, line_num: usize) -> Result<Vec<Token>, LexErrors> {
                 lex_state.start = lex_state.current;
                 lex_state.current += 1
             }
+
+            c if c.is_digit(10) => match lex_integer(&mut lex_state, &chars, line_num) {
+                Ok(token) => {
+                    returning_token.push(token);
+                }
+                Err(err) => return Err(err),
+            },
             //all other characters are assumed to be the beginning of an identifier
             _ => match lex_identifier(&mut lex_state, &chars, line_num) {
                 Ok(token) => {
@@ -185,6 +192,36 @@ pub fn lex_line(line: &str, line_num: usize) -> Result<Vec<Token>, LexErrors> {
     }
 
     Ok(returning_token)
+}
+
+fn lex_integer(
+    lex_state: &mut LexState,
+    chars: &Vec<char>,
+    line_num: usize,
+) -> Result<Token, LexErrors> {
+    lex_state.start = lex_state.current;
+    while lex_state.current < lex_state.end {
+        let c = &chars[lex_state.current];
+        if c.is_digit(10) {
+            lex_state.current += 1;
+        } else {
+            break;
+        }
+    }
+    let literal_slice: &[char] = &chars[lex_state.start..lex_state.current];
+    let literal_str: String = literal_slice.iter().collect();
+    let literal: i64 = literal_str
+        .parse()
+        .map_err(|_| LexErrors::InvalidIntLiteral)?;
+
+    return Ok(Token::Integer {
+        source: SourceLocation::new(
+            line_num,
+            lex_state.start,
+            lex_state.current - lex_state.start,
+        ),
+        literal: literal,
+    });
 }
 
 fn lex_identifier(
