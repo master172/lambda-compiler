@@ -3,7 +3,6 @@ use std::collections::HashSet;
 use crate::{
     parser::{
         definitions::{
-            ApplicationASTNode,
             Atom::{AtomicExpression, Identifier},
             AtomicASTNode, ExpressionASTNode,
             Expressions::{self, Abstraction, Application, PhiAbstraction},
@@ -248,33 +247,6 @@ pub fn reduce_application_once<R: Runtime>(
     false
 }
 
-pub fn beta_reduce<T: AbstractionReducable>(
-    abstraction: &T,
-    application: &mut ApplicationASTNode,
-    definitions: &SemanticTable,
-    name_generator: &mut NameGenerator,
-) -> Option<Expressions> {
-    let target = abstraction.identifier().name.clone();
-    // need to get the inner application this way
-    let argument = application.right.remove(0);
-
-    let remaining_arguments = std::mem::take(&mut application.right);
-
-    let mut body = abstraction.expression().clone();
-
-    substitute_expression(&mut body, &argument, definitions, &target, name_generator);
-
-    Some(if remaining_arguments.is_empty() {
-        body
-    } else {
-        Application(ApplicationASTNode {
-            left: Box::new(AtomicASTNode {
-                atom: AtomicExpression(ExpressionASTNode { expression: body }),
-            }),
-            right: remaining_arguments,
-        })
-    })
-}
 // this is mostly work delegation
 pub fn reduce_atomic_once<R: Runtime>(
     atomic: &mut AtomicASTNode,
