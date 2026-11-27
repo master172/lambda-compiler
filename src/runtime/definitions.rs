@@ -1,16 +1,24 @@
-use std::{collections::HashMap, fmt};
+use std::{
+    collections::HashMap,
+    fmt,
+    io::{self, Write},
+};
 
-use crate::runtime::definitions::RuntimeErrors::FailedAbstractionPrint;
+use crate::runtime::definitions::RuntimeErrors::{FailedAbstractionPrint, Io, UnknownStream};
 
 #[derive(Debug)]
 pub enum RuntimeErrors {
     FailedAbstractionPrint,
+    UnknownStream(i64),
+    Io(io::Error),
 }
 
 impl fmt::Display for RuntimeErrors {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self {
             FailedAbstractionPrint => write!(f, "failed to print phi abstraction"),
+            UnknownStream(stream) => write!(f, "unknown stream: {stream}"),
+            Io(err) => write!(f, "{err}"),
         }
     }
 }
@@ -23,14 +31,14 @@ pub trait Runtime {
 }
 
 pub struct BasicRuntime {
-    pub output_buffers: HashMap<i64, String>,
+    pub output_buffers: HashMap<i64, Box<dyn Write>>,
 }
 
 impl BasicRuntime {
     pub fn new() -> BasicRuntime {
-        let mut output_buffers: HashMap<i64, String> = HashMap::new();
-        output_buffers.insert(1, String::new());
-        output_buffers.insert(2, String::new());
+        let mut output_buffers: HashMap<i64, Box<dyn Write>> = HashMap::new();
+        output_buffers.insert(1, Box::new(io::stdout()));
+        output_buffers.insert(2, Box::new(io::stderr()));
         BasicRuntime { output_buffers }
     }
 }
@@ -38,10 +46,15 @@ impl BasicRuntime {
 impl Runtime for BasicRuntime {
     fn phi<P: PhiValid>(&mut self, stream_id: i64, value: &P) -> Result<(), RuntimeErrors> {
         let output = value.phi_string()?;
-        self.output_buffers
-            .entry(stream_id)
-            .or_default()
-            .push_str(&output);
+        let stream = self
+            .output_buffers
+            .get_mut(&stream_id)
+            .ok_or(RuntimeErrors::UnknownStream(stream_id))?;
+
+        stream
+            .write_all(output.as_bytes())
+            .map_err(|err| RuntimeErrors::Io(err))?;
+
         Ok(())
     }
 }

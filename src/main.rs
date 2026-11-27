@@ -127,20 +127,16 @@ fn main() {
     };
 
     // we can print it using a pretty printer in debug prininting mode
-    if args_packet.debug_printing {
-        let mut pretty_printer: PrettyPrinter = PrettyPrinter {
-            print_defintion: args_packet.defintion_print,
-        };
-        match pretty_printer.visit_program(&program_ast) {
-            Ok(str) => println!("{}", str),
-            _ => eprintln!("pretty printer encountered an error"),
-        };
+    if !args_packet.debug_printing {
+        return;
     }
-
-    //otherwise we do some runtime testing here (unfinalized)
-    for (stream, string) in &runtime.output_buffers {
-        println!("stream: {} message: {}", stream, string)
-    }
+    let mut pretty_printer: PrettyPrinter = PrettyPrinter {
+        print_defintion: args_packet.defintion_print,
+    };
+    match pretty_printer.visit_program(&program_ast) {
+        Ok(str) => println!("{}", str),
+        _ => eprintln!("pretty printer encountered an error"),
+    };
 
     //println!("{:#?}", program_ast)
 }
