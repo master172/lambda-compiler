@@ -8,10 +8,16 @@ definition ::= Identifier "=" expression
 
 expression ::= abstraction | application
 
-abstraction ::= "lambda" Identifier "." expression
+abstraction ::= "lambda" Identifier "." expression | runtime_abstraction
+
+runtime_abstraction ::= output_abstraction
+
+output_abstraction ::= "phi" "(" Integer ")" Identifier "." expression
 
 application ::= atom atom*
 
-atom ::= Identifier | "(" expression ")"
+atom ::= Identifier | runtime_abstraction | "(" expression ")"
 
 Identifier ::= IDENTIFIER ("->" IDENTIFIER)*
+
+Integer ::= DIGIT+
