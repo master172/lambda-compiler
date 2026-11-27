@@ -9,6 +9,7 @@ pub struct ArgsPacket {
     pub source: PathBuf,
     pub modules: Vec<PathBuf>,
     pub allow_free_variables: bool,
+    pub debug_printing: bool,
     pub debug: bool,
     pub defintion_print: bool,
 }
@@ -42,6 +43,7 @@ pub fn create_args_packet() -> Result<ArgsPacket, ArgsError> {
         modules: Vec::new(),
         allow_free_variables: false,
         debug: false,
+        debug_printing: false,
         defintion_print: false,
     };
 
@@ -62,6 +64,9 @@ pub fn create_args_packet() -> Result<ArgsPacket, ArgsError> {
         }
         if value == "-d" {
             source_packet.debug = true
+        }
+        if value == "-dp" {
+            source_packet.debug_printing = true
         }
         if value == "-pd" {
             source_packet.defintion_print = true

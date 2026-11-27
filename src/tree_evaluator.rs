@@ -12,6 +12,7 @@ use crate::{
         },
         runtime_abstractions::AbstractionReducable,
     },
+    runtime::definitions::Runtime,
     semantic_analyser::definitions::SemanticTable,
     tree_evaluator::helpers::{
         NameGenerator, free_variables_atomic, get_free_variables, rename_conflicting_binders,
@@ -19,10 +20,15 @@ use crate::{
     },
 };
 
-mod helpers;
+pub mod helpers;
 
 // simple enough just normalize all expression
-pub fn evaluate(program: &mut ProgramASTNode, definitions: &SemanticTable, debug: bool) {
+pub fn evaluate<R: Runtime>(
+    program: &mut ProgramASTNode,
+    definitions: &SemanticTable,
+    debug: bool,
+    runtime: &mut R,
+) {
     for statement in &mut program.statements {
         match &mut statement.statement {
             // no need to normalize a definition
@@ -31,14 +37,19 @@ pub fn evaluate(program: &mut ProgramASTNode, definitions: &SemanticTable, debug
             ImportStatement(_) => {}
             // all else is normalized
             StatementExpression(expression) => {
-                normalize(expression, &definitions, debug);
+                normalize(expression, &definitions, debug, runtime);
             }
         };
     }
 }
 
 // simple enough again call reduce expression until it can no longer be reduced
-pub fn normalize(expression: &mut ExpressionASTNode, definitions: &SemanticTable, debug: bool) {
+pub fn normalize<R: Runtime>(
+    expression: &mut ExpressionASTNode,
+    definitions: &SemanticTable,
+    debug: bool,
+    runtime: &mut R,
+) {
     let mut bound_variables: HashSet<String> = HashSet::new();
     let mut name_generator: NameGenerator = NameGenerator::new(expression, definitions);
     loop {
@@ -50,6 +61,7 @@ pub fn normalize(expression: &mut ExpressionASTNode, definitions: &SemanticTable
             definitions,
             &mut bound_variables,
             &mut name_generator,
+            runtime,
         ) == false
         {
             break;
@@ -58,21 +70,32 @@ pub fn normalize(expression: &mut ExpressionASTNode, definitions: &SemanticTable
 }
 
 // just delegate the work to the respective functions
-pub fn reduce_expression_once(
+pub fn reduce_expression_once<R: Runtime>(
     expression: &mut ExpressionASTNode,
     definitions: &SemanticTable,
     bound_variables: &mut HashSet<String>,
     name_generator: &mut NameGenerator,
+    runtime: &mut R,
 ) -> bool {
     let modified: bool;
     match &mut expression.expression {
         Abstraction(abstraction) => {
-            modified =
-                reduce_abstraction_once(abstraction, definitions, bound_variables, name_generator)
+            modified = reduce_abstraction_once(
+                abstraction,
+                definitions,
+                bound_variables,
+                name_generator,
+                runtime,
+            )
         }
         PhiAbstraction(abstraction) => {
-            modified =
-                reduce_abstraction_once(abstraction, definitions, bound_variables, name_generator)
+            modified = reduce_abstraction_once(
+                abstraction,
+                definitions,
+                bound_variables,
+                name_generator,
+                runtime,
+            )
         }
         Application(_) => {
             modified = reduce_application_once(
@@ -80,6 +103,7 @@ pub fn reduce_expression_once(
                 definitions,
                 bound_variables,
                 name_generator,
+                runtime,
             )
         }
     }
@@ -87,11 +111,12 @@ pub fn reduce_expression_once(
 }
 
 // just recursively reducing abstractions until all you have is applications
-pub fn reduce_abstraction_once<T: AbstractionReducable>(
+pub fn reduce_abstraction_once<T: AbstractionReducable, R: Runtime>(
     abstraction: &mut T,
     definitions: &SemanticTable,
     bound_variables: &mut HashSet<String>,
     name_generator: &mut NameGenerator,
+    runtime: &mut R,
 ) -> bool {
     // we add to bound variables here which is passed throughout the evaluation
     let name = abstraction.identifier().name.clone();
@@ -99,16 +124,17 @@ pub fn reduce_abstraction_once<T: AbstractionReducable>(
 
     let modified = match abstraction.expression_mut() {
         Abstraction(inner) => {
-            reduce_abstraction_once(inner, definitions, bound_variables, name_generator)
+            reduce_abstraction_once(inner, definitions, bound_variables, name_generator, runtime)
         }
         PhiAbstraction(inner) => {
-            reduce_abstraction_once(inner, definitions, bound_variables, name_generator)
+            reduce_abstraction_once(inner, definitions, bound_variables, name_generator, runtime)
         }
         Application(_) => reduce_application_once(
             abstraction.expression_mut(),
             definitions,
             bound_variables,
             name_generator,
+            runtime,
         ),
     };
 
@@ -122,11 +148,12 @@ pub fn reduce_abstraction_once<T: AbstractionReducable>(
 
 // probbably the most important function since beta reduction happens here
 // and we check for alpha renaming here as well
-pub fn reduce_application_once(
+pub fn reduce_application_once<R: Runtime>(
     application: &mut Expressions,
     definitions: &SemanticTable,
     bound_variables: &mut HashSet<String>,
     name_generator: &mut NameGenerator,
+    runtime: &mut R,
 ) -> bool {
     // if this is not an application do not reduce just return false
     let Application(inner_application) = application else {
@@ -136,7 +163,7 @@ pub fn reduce_application_once(
     // first start with reducing the left expression if it is an expression
     let is_abstraction = match &inner_application.left.atom {
         AtomicExpression(expression) => match &expression.expression {
-            Abstraction(_) => true,
+            Abstraction(_) | PhiAbstraction(_) => true,
             _ => false,
         },
         _ => false,
@@ -155,6 +182,7 @@ pub fn reduce_application_once(
             definitions,
             bound_variables,
             name_generator,
+            runtime,
         ) {
             return true;
         }
@@ -162,48 +190,98 @@ pub fn reduce_application_once(
 
     // if it was a function try beta reducing
     // this requires to more if let checks to actually get inner abstraction
-    if let AtomicExpression(inner) = &inner_application.left.atom {
-        if let Abstraction(abstraction) = &inner.expression {
-            if !inner_application.right.is_empty() {
-                let target = abstraction.identifier.name.clone();
-                let arguement = inner_application.right.remove(0);
-
-                let remaining_arguements = std::mem::take(&mut inner_application.right);
-                let mut body = abstraction.expression.as_ref().clone();
-
-                substitute_expression(&mut body, &arguement, definitions, &target, name_generator);
-
-                if remaining_arguements.is_empty() {
-                    *application = body;
-                } else {
-                    *application = Application(ApplicationASTNode {
-                        left: Box::new(AtomicASTNode {
-                            atom: AtomicExpression(ExpressionASTNode { expression: body }),
-                        }),
-                        right: remaining_arguements,
-                    })
-                }
-
-                return true;
+    let result = match &inner_application.left.atom {
+        AtomicExpression(inner) => match &inner.expression {
+            Abstraction(abstraction) => {
+                abstraction.beta_reduce(&mut inner_application.right, definitions, name_generator)
             }
-        }
-    }
+            PhiAbstraction(abstraction) => {
+                // here we handle the reduction of phi abstractions
+                if inner_application.right.is_empty() {
+                    None
+                } else {
+                    // if it could be reduced we just reduce it and return true
+                    if reduce_atomic_once(
+                        &mut inner_application.right[0],
+                        definitions,
+                        bound_variables,
+                        name_generator,
+                        runtime,
+                    ) {
+                        return true;
+                    }
+                    // otherwise tell the runtime to do something with it, and then beta reduce it
+                    runtime
+                        .phi(
+                            abstraction.communication_stream_id,
+                            &inner_application.right[0],
+                        )
+                        .unwrap();
+                    abstraction.beta_reduce(
+                        &mut inner_application.right,
+                        definitions,
+                        name_generator,
+                    )
+                }
+            }
+            _ => None,
+        },
+        _ => None,
+    };
 
+    if let Some(result) = result {
+        *application = result;
+        return true;
+    }
     // reduce right arguements if no beta substitution happens
     for arguement in &mut inner_application.right {
-        if reduce_atomic_once(arguement, definitions, bound_variables, name_generator) {
+        if reduce_atomic_once(
+            arguement,
+            definitions,
+            bound_variables,
+            name_generator,
+            runtime,
+        ) {
             return true;
         }
     }
     false
 }
 
+pub fn beta_reduce<T: AbstractionReducable>(
+    abstraction: &T,
+    application: &mut ApplicationASTNode,
+    definitions: &SemanticTable,
+    name_generator: &mut NameGenerator,
+) -> Option<Expressions> {
+    let target = abstraction.identifier().name.clone();
+    // need to get the inner application this way
+    let argument = application.right.remove(0);
+
+    let remaining_arguments = std::mem::take(&mut application.right);
+
+    let mut body = abstraction.expression().clone();
+
+    substitute_expression(&mut body, &argument, definitions, &target, name_generator);
+
+    Some(if remaining_arguments.is_empty() {
+        body
+    } else {
+        Application(ApplicationASTNode {
+            left: Box::new(AtomicASTNode {
+                atom: AtomicExpression(ExpressionASTNode { expression: body }),
+            }),
+            right: remaining_arguments,
+        })
+    })
+}
 // this is mostly work delegation
-pub fn reduce_atomic_once(
+pub fn reduce_atomic_once<R: Runtime>(
     atomic: &mut AtomicASTNode,
     definitions: &SemanticTable,
     bound_variables: &mut HashSet<String>,
     name_generator: &mut NameGenerator,
+    runtime: &mut R,
 ) -> bool {
     let modified: bool;
     match &mut atomic.atom {
@@ -219,8 +297,13 @@ pub fn reduce_atomic_once(
             }
         }
         AtomicExpression(expression) => {
-            modified =
-                reduce_expression_once(expression, definitions, bound_variables, name_generator)
+            modified = reduce_expression_once(
+                expression,
+                definitions,
+                bound_variables,
+                name_generator,
+                runtime,
+            )
         }
     }
     modified

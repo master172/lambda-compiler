@@ -10,6 +10,7 @@ use crate::{
     lexer::definitions::Token,
     parser::definitions::ProgramASTNode,
     pretty_printer::definitions::PrettyPrinter,
+    runtime::definitions::BasicRuntime,
     semantic_analyser::{
         canonizer::{Canonicalizer, definitions::CanoniclaizationContext},
         create_semantic_table,
@@ -24,9 +25,10 @@ mod compiler_definitions;
 mod dependency_graph;
 pub mod lexer;
 pub mod parser;
-mod pretty_printer;
+pub mod pretty_printer;
+mod runtime;
 mod semantic_analyser;
-mod tree_evaluator;
+pub mod tree_evaluator;
 mod visitor;
 
 fn main() {
@@ -108,17 +110,33 @@ fn main() {
     };
     // then flatten the store
     let semantic_table = semantic_store.flatten();
-    // we just evaluat the AST directly here
-    evaluate(&mut program_ast, &semantic_table, args_packet.debug);
 
-    // we can print it using a pretty printer
-    let mut pretty_printer: PrettyPrinter = PrettyPrinter {
-        print_defintion: args_packet.defintion_print,
-    };
-    match pretty_printer.visit_program(&program_ast) {
-        Ok(str) => println!("{}", str),
-        _ => eprintln!("pretty printer encountered an error"),
-    };
+    // create the runtime before evaluation
+    let mut runtime: BasicRuntime = BasicRuntime::new();
+    // we just evaluat the AST directly here
+    evaluate(
+        &mut program_ast,
+        &semantic_table,
+        args_packet.debug,
+        &mut runtime,
+    );
+
+    // we can print it using a pretty printer in debug prininting mode
+    if args_packet.debug_printing {
+        let mut pretty_printer: PrettyPrinter = PrettyPrinter {
+            print_defintion: args_packet.defintion_print,
+        };
+        match pretty_printer.visit_program(&program_ast) {
+            Ok(str) => println!("{}", str),
+            _ => eprintln!("pretty printer encountered an error"),
+        };
+    }
+
+    //otherwise we do some runtime testing here (unfinalized)
+    for (stream, string) in &runtime.output_buffers {
+        println!("stream: {} message: {}", stream, string)
+    }
+
     //println!("{:#?}", program_ast)
 }
 
