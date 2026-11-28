@@ -5,7 +5,7 @@ use std::{
 
 use crate::lexer::{
     definitions::{
-        LexErrors::{self, FailedToProcessLine, InvalidIdentifier},
+        LexErrors::{self, FailedToProcessLine, InvalidIdentifier, InvalidStringLiteral},
         SourceLocation, Token,
     },
     helpers::{is_identifier_terminator, is_valid_identifier_name},
@@ -203,6 +203,15 @@ pub fn lex_line(line: &str, line_num: usize) -> Result<Vec<Token>, LexErrors> {
                     ),
                 });
             }
+            '"' => {
+                lex_state.start = lex_state.current;
+                lex_state.current += 1;
+
+                match lex_string_literal(&mut lex_state, &chars, line_num) {
+                    Ok(token) => returning_token.push(token),
+                    Err(err) => return Err(err),
+                }
+            }
 
             //this skips over and whitespace or control characrers such as space, tab or new line
             c if c.is_whitespace() || c.is_control() => {
@@ -257,6 +266,53 @@ fn lex_integer(
         ),
         literal: literal,
     });
+}
+
+fn lex_string_literal(
+    lex_state: &mut LexState,
+    chars: &Vec<char>,
+    line_num: usize,
+) -> Result<Token, LexErrors> {
+    let mut literal: String = String::new();
+
+    while lex_state.current < lex_state.end {
+        let c = chars[lex_state.current];
+        lex_state.current += 1;
+
+        match c {
+            '"' => {
+                return Ok(Token::String {
+                    source: SourceLocation::new(
+                        line_num,
+                        lex_state.start,
+                        lex_state.current - lex_state.start,
+                    ),
+                    literal,
+                });
+            }
+            '\\' => {
+                if lex_state.current >= lex_state.end {
+                    return Err(InvalidStringLiteral);
+                }
+
+                let escaped = chars[lex_state.current];
+                lex_state.current += 1;
+
+                match escaped {
+                    'n' => literal.push('\n'),
+                    't' => literal.push('\t'),
+                    'r' => literal.push('\r'),
+                    '0' => literal.push('\0'),
+                    '\\' => literal.push('\\'),
+                    '"' => literal.push('"'),
+                    _ => return Err(LexErrors::InvalidStringLiteral),
+                }
+            }
+            _ => literal.push(c),
+        };
+    }
+
+    Err(LexErrors::InvalidStringLiteral)
 }
 
 fn lex_identifier(
