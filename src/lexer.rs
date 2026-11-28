@@ -168,6 +168,17 @@ pub fn lex_line(line: &str, line_num: usize) -> Result<Vec<Token>, LexErrors> {
                     ),
                 });
             }
+            'ψ' => {
+                lex_state.start = lex_state.current;
+                lex_state.current += 1;
+                returning_token.push(Token::Psi {
+                    source: SourceLocation::new(
+                        line_num,
+                        lex_state.start,
+                        lex_state.current - lex_state.start,
+                    ),
+                });
+            }
 
             //this skips over and whitespace or control characrers such as space, tab or new line
             c if c.is_whitespace() || c.is_control() => {
@@ -279,6 +290,9 @@ pub fn match_key_word_to_token(
             source: SourceLocation::new(line, start, column - start),
         }),
         "phi" => Some(Token::Phi {
+            source: SourceLocation::new(line, start, column - start),
+        }),
+        "psi" => Some(Token::Psi {
             source: SourceLocation::new(line, start, column - start),
         }),
         _ => None,
