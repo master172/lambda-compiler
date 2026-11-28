@@ -65,6 +65,30 @@ pub fn lex(file: File) -> Result<Vec<Token>, LexErrors> {
     Ok(returning_token)
 }
 
+pub fn lex_string(input: String) -> Result<Vec<Token>, LexErrors> {
+    let mut returning_token: Vec<Token> = Vec::new();
+    let mut lines_processed: usize = 0;
+    for (line_num, line) in input.lines().enumerate() {
+        match lex_line(&line, line_num) {
+            Ok(mut val) => returning_token.append(&mut val),
+            Err(e) => return Err(e),
+        };
+        lines_processed = line_num;
+    }
+    let last_column = match returning_token.last() {
+        Some(val) => {
+            let source = val.get_source();
+            source.get_columm() + source.get_size()
+        }
+        None => 0,
+    };
+    returning_token.push(Token::EOF {
+        source: SourceLocation::new(lines_processed, last_column, 0),
+    });
+
+    Ok(returning_token)
+}
+
 /// lex_line function converts a string slice to a vector of characters and then uses the LexState struct to keep track
 /// of the current index that in the line that the lexer is processing
 pub fn lex_line(line: &str, line_num: usize) -> Result<Vec<Token>, LexErrors> {

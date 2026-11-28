@@ -99,7 +99,7 @@ pub fn reduce_expression_once<R: Runtime>(
             )?
         }
         PsiAbstraction(abstraction) => {
-            let replacement = reduce_input_once(abstraction, definitions, runtime)?;
+            let replacement = reduce_input_once(abstraction, runtime)?;
             expression.expression = replacement.expression;
             modified = true;
         }
@@ -136,7 +136,7 @@ pub fn reduce_abstraction_once<T: AbstractionReducable, R: Runtime>(
             reduce_abstraction_once(inner, definitions, bound_variables, name_generator, runtime)
         }
         PsiAbstraction(inner) => {
-            let replacement = reduce_input_once(inner, definitions, runtime)?;
+            let replacement = reduce_input_once(inner, runtime)?;
             *abstraction.expression_mut() = replacement.expression;
             Ok(true)
         }
@@ -159,10 +159,9 @@ pub fn reduce_abstraction_once<T: AbstractionReducable, R: Runtime>(
 
 pub fn reduce_input_once<T: InputReducable, R: Runtime>(
     abstraction: &mut T,
-    definitions: &SemanticTable,
     runtime: &mut R,
 ) -> Result<ExpressionASTNode, RuntimeErrors> {
-    abstraction.input_reduce(definitions, runtime)
+    abstraction.input_reduce(runtime)
 }
 
 // probbably the most important function since beta reduction happens here

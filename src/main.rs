@@ -108,11 +108,11 @@ fn main() {
         Ok(_) => {}
         Err(e) => panic!("canonization failed with error {e}"),
     };
-    // then flatten the store
-    let semantic_table = semantic_store.flatten();
 
     // create the runtime before evaluation
-    let mut runtime: BasicRuntime = BasicRuntime::new();
+    let mut runtime: BasicRuntime = BasicRuntime::new(semantic_store.clone());
+    // then flatten the store
+    let semantic_table = semantic_store.flatten();
     // we just evaluat the AST directly here
     match evaluate(
         &mut program_ast,

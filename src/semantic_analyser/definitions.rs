@@ -42,7 +42,7 @@ impl Display for SemanticErrors {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SemanticStore {
     pub modules: HashMap<String, SemanticTable>,
     pub global: SemanticTable,
@@ -77,7 +77,7 @@ impl SemanticStore {
         semantic_table
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SemanticTable {
     pub definitions: HashMap<String, DefinitionASTNode>,
 }

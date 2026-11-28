@@ -32,9 +32,8 @@ impl PhiValid for Box<AtomicASTNode> {
 impl InputReducable for PsiAbstractionASTNode {
     fn input_reduce<R: super::definitions::Runtime>(
         &self,
-        definitions: &crate::semantic_analyser::definitions::SemanticTable,
         runtime: &mut R,
     ) -> Result<crate::parser::definitions::ExpressionASTNode, RuntimeErrors> {
-        runtime.psi(self.communication_stream_id, definitions)
+        runtime.psi(self.communication_stream_id)
     }
 }
