@@ -5,7 +5,10 @@ use std::{
 
 use crate::lexer::{
     definitions::{
-        LexErrors::{self, FailedToProcessLine, InvalidIdentifier, InvalidStringLiteral},
+        LexErrors::{
+            self, FailedToProcessLine, InvalidIdentifier, InvalidModulePointer,
+            InvalidStringLiteral,
+        },
         SourceLocation, Token,
     },
     helpers::{is_identifier_terminator, is_valid_identifier_name},
@@ -113,6 +116,9 @@ pub fn lex_line(line: &str, line_num: usize) -> Result<Vec<Token>, LexErrors> {
             '-' => {
                 lex_state.start = lex_state.current;
                 lex_state.current += 1;
+                if lex_state.current >= lex_state.end {
+                    return Err(InvalidModulePointer);
+                }
                 if chars[lex_state.current] == '>' {
                     lex_state.current += 1;
                     returning_token.push(Token::Arrow {
