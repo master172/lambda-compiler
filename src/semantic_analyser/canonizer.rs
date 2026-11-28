@@ -1,7 +1,7 @@
 use crate::{
     parser::definitions::{
         Atom::{AtomicExpression, Identifier},
-        Expressions::{Abstraction, Application, PhiAbstraction},
+        Expressions::{Abstraction, Application, PhiAbstraction, PsiAbstraction},
         ProgramASTNode,
         Statemets::{Definition, ImportStatement, StatementExpression},
     },
@@ -106,6 +106,7 @@ impl<'ast> MutableVisitor<'ast, (), SemanticErrors> for Canonicalizer {
             Abstraction(abstraction) => abstraction.accept_mut(self)?,
             Application(application) => application.accept_mut(self)?,
             PhiAbstraction(abstraction) => abstraction.accept_mut(self)?,
+            PsiAbstraction(abstraction) => abstraction.accept_mut(self)?,
         }
         Ok(())
     }
@@ -120,6 +121,7 @@ impl<'ast> MutableVisitor<'ast, (), SemanticErrors> for Canonicalizer {
             Abstraction(abstraction) => abstraction.accept_mut(self),
             Application(application) => application.accept_mut(self),
             PhiAbstraction(abstraction) => abstraction.accept_mut(self),
+            PsiAbstraction(abstraction) => abstraction.accept_mut(self),
         };
 
         self.bound_variables.pop();
@@ -136,10 +138,21 @@ impl<'ast> MutableVisitor<'ast, (), SemanticErrors> for Canonicalizer {
             Abstraction(abstraction) => abstraction.accept_mut(self),
             Application(application) => application.accept_mut(self),
             PhiAbstraction(abstraction) => abstraction.accept_mut(self),
+            PsiAbstraction(abstraction) => abstraction.accept_mut(self),
         };
 
         self.bound_variables.pop();
         result
+    }
+
+    fn visit_psi_abstraction(
+        &mut self,
+        _node: &'ast mut crate::parser::definitions::PsiAbstractionASTNode,
+    ) -> Result<(), SemanticErrors> {
+        // evaluated at runtime no meaning trying to semantic analyze it during intial pass
+        // the actual abstraction will be semantically analyzed later
+        // and since only regular lmabda's are allowed the existing semantic table is fine to use
+        Ok(())
     }
 
     fn visit_application(

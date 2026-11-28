@@ -1,22 +1,20 @@
 use crate::{
     lexer::definitions::Token::{
-        self, Arrow, Assignment, EOF, Import, Integer, Lambda, LeftParen, Phi, RightParen,
+        self, Arrow, Assignment, EOF, Import, Integer, Lambda, LeftParen, Phi, Psi, RightParen,
         SemiColon, Var,
     },
     parser::{
         definitions::{
             AbstractionASTNode, ApplicationASTNode, Atom, AtomicASTNode, DefinitionASTNode,
-            ExpressionASTNode,
-            Expressions::{Abstraction, Application, PhiAbstraction},
-            IdentifierASTNode, ImportASTNode,
+            ExpressionASTNode, IdentifierASTNode, ImportASTNode,
             ParserErrors::{
                 self, ExpectedAssignmentToken, ExpectedDotToken, ExpectedIntegerToken,
                 ExpectedLeftParenthesisToken, ExpectedRightParenthesisToken, ExpectedSemiColon,
                 InvalidAbstraction, InvalidAtomic, InvalidDefinition, InvalidExpression,
-                InvalidIdentifier, InvalidPhiAbstraction, InvalidStatmentInitalizer,
-                UnexpectedEOFError,
+                InvalidIdentifier, InvalidPhiAbstraction, InvalidPsiAbstraction,
+                InvalidStatmentInitalizer, UnexpectedEOFError,
             },
-            PhiAbstractionASTNode, ProgramASTNode, StatementASTNode,
+            PhiAbstractionASTNode, ProgramASTNode, PsiAbstractionASTNode, StatementASTNode,
             Statemets::{Definition, ImportStatement, StatementExpression},
         },
         state::ParserState,
@@ -58,6 +56,13 @@ fn parse_statement_node(state: &mut ParserState) -> Result<Option<StatementASTNo
             return Ok(None);
         }
         Lambda { .. } => {
+            let expression: ExpressionASTNode = parse_expression_node(state)?;
+            let statement: StatementASTNode = StatementASTNode {
+                statement: StatementExpression(expression),
+            };
+            statement
+        }
+        Psi { .. } => {
             let expression: ExpressionASTNode = parse_expression_node(state)?;
             let statement: StatementASTNode = StatementASTNode {
                 statement: StatementExpression(expression),
@@ -175,6 +180,13 @@ fn parse_expression_node(state: &mut ParserState) -> Result<ExpressionASTNode, P
             };
             expression
         }
+        Some(Psi { .. }) => {
+            let abstraction: PsiAbstractionASTNode = parse_psi_abstraction_node(state)?;
+            let expression: ExpressionASTNode = ExpressionASTNode {
+                expression: definitions::Expressions::PsiAbstraction(abstraction),
+            };
+            expression
+        }
         Some(Var { .. }) | Some(LeftParen { .. }) => {
             let application: ApplicationASTNode = parse_application_node(state)?;
             let expression: ExpressionASTNode = ExpressionASTNode {
@@ -254,15 +266,66 @@ fn parse_phi_abstraction_node(
         None => return Err(UnexpectedEOFError),
     };
     let expression: ExpressionASTNode = parse_expression_node(state)?;
-    let expression = match expression.expression {
-        Abstraction(abstraction) => Abstraction(abstraction),
-        Application(application) => Application(application),
-        PhiAbstraction(abstraction) => PhiAbstraction(abstraction),
-    };
+    let expression = expression.expression;
     let abstraction: PhiAbstractionASTNode = PhiAbstractionASTNode {
         communication_stream_id: literal,
         identifier,
         expression: Box::new(expression),
+    };
+    Ok(abstraction)
+}
+
+fn parse_psi_abstraction_node(
+    state: &mut ParserState,
+) -> Result<PsiAbstractionASTNode, ParserErrors> {
+    let psi_token = state.advance();
+    // technicaly a redundant check but why not
+    match psi_token {
+        Some(Psi { .. }) => {}
+        Some(token) => {
+            return Err(InvalidPsiAbstraction {
+                location: token.get_source(),
+            });
+        }
+        None => return Err(UnexpectedEOFError),
+    };
+    // see if the left bracket exists
+    let left_bracket = state.advance();
+    match left_bracket {
+        Some(LeftParen { .. }) => {}
+        Some(token) => {
+            return Err(ExpectedLeftParenthesisToken {
+                location: token.get_source(),
+            });
+        }
+        None => return Err(UnexpectedEOFError),
+    };
+    // parse and verify existence of integer literal
+    let literal = match state.advance() {
+        Some(Integer {
+            source: _source,
+            literal,
+        }) => *literal,
+        Some(token) => {
+            return Err(ExpectedIntegerToken {
+                location: token.get_source(),
+            });
+        }
+        None => return Err(UnexpectedEOFError),
+    };
+    // make sure right bracket exists
+    let right_bracket = state.advance();
+    match right_bracket {
+        Some(RightParen { .. }) => {}
+        Some(token) => {
+            return Err(ExpectedRightParenthesisToken {
+                location: token.get_source(),
+            });
+        }
+        None => return Err(UnexpectedEOFError),
+    };
+    let abstraction: PsiAbstractionASTNode = PsiAbstractionASTNode {
+        communication_stream_id: literal,
     };
     Ok(abstraction)
 }
@@ -290,11 +353,7 @@ fn parse_abstraction_node(state: &mut ParserState) -> Result<AbstractionASTNode,
         None => return Err(UnexpectedEOFError),
     };
     let expression: ExpressionASTNode = parse_expression_node(state)?;
-    let expression = match expression.expression {
-        Abstraction(abstraction) => Abstraction(abstraction),
-        Application(application) => Application(application),
-        PhiAbstraction(abstraction) => PhiAbstraction(abstraction),
-    };
+    let expression = expression.expression;
     let abstraction: AbstractionASTNode = AbstractionASTNode {
         identifier,
         expression: Box::new(expression),

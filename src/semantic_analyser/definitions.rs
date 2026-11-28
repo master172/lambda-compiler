@@ -3,7 +3,7 @@ use crate::{
         AbstractionASTNode, ApplicationASTNode,
         Atom::{AtomicExpression, Identifier},
         AtomicASTNode, DefinitionASTNode, ExpressionASTNode,
-        Expressions::{Abstraction, Application, PhiAbstraction},
+        Expressions::{Abstraction, Application, PhiAbstraction, PsiAbstraction},
         IdentifierASTNode, ProgramASTNode, StatementASTNode,
         Statemets::{Definition, ImportStatement, StatementExpression},
     },
@@ -247,6 +247,7 @@ impl<'table, 'ast> Visitor<'ast, (), SemanticErrors> for Analyser<'table> {
             Abstraction(abstraction) => abstraction.accept(self)?,
             Application(application) => application.accept(self)?,
             PhiAbstraction(abstraction) => abstraction.accept(self)?,
+            PsiAbstraction(abstraction) => abstraction.accept(self)?,
         }
         Ok(())
     }
@@ -258,6 +259,7 @@ impl<'table, 'ast> Visitor<'ast, (), SemanticErrors> for Analyser<'table> {
             Abstraction(abstraction) => abstraction.accept(self),
             Application(application) => application.accept(self),
             PhiAbstraction(abstraction) => abstraction.accept(self),
+            PsiAbstraction(abstraction) => abstraction.accept(self),
         };
         self.bound_variables.pop();
         result
@@ -274,9 +276,20 @@ impl<'table, 'ast> Visitor<'ast, (), SemanticErrors> for Analyser<'table> {
             Abstraction(abstraction) => abstraction.accept(self),
             Application(application) => application.accept(self),
             PhiAbstraction(abstraction) => abstraction.accept(self),
+            PsiAbstraction(abstraction) => abstraction.accept(self),
         };
         self.bound_variables.pop();
         result
+    }
+
+    fn visit_psi_abstraction(
+        &mut self,
+        _node: &'ast crate::parser::definitions::PsiAbstractionASTNode,
+    ) -> Result<(), SemanticErrors> {
+        // evaluated at runtime no meaning trying to semantic analyze it during intial pass
+        // the actual abstraction will be semantically analyzed later
+        // and since only regular lmabda's are allowed the existing semantic table is fine to use
+        Ok(())
     }
 
     fn visit_application(&mut self, node: &'ast ApplicationASTNode) -> Result<(), SemanticErrors> {

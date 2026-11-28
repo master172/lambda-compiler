@@ -4,7 +4,11 @@ use std::{
     io::{self, Write},
 };
 
-use crate::runtime::definitions::RuntimeErrors::{FailedAbstractionPrint, Io, UnknownStream};
+use crate::{
+    parser::definitions::ExpressionASTNode,
+    runtime::definitions::RuntimeErrors::{FailedAbstractionPrint, Io, UnknownStream},
+    semantic_analyser::definitions::SemanticTable,
+};
 
 #[derive(Debug)]
 pub enum RuntimeErrors {
@@ -26,8 +30,21 @@ pub trait PhiValid {
     fn phi_string(&self) -> Result<String, RuntimeErrors>;
 }
 
+pub trait InputReducable {
+    fn input_reduce<R: Runtime>(
+        &self,
+        definitions: &SemanticTable,
+        runtime: &mut R,
+    ) -> Result<ExpressionASTNode, RuntimeErrors>;
+}
+
 pub trait Runtime {
     fn phi<P: PhiValid>(&mut self, stream_id: i64, value: &P) -> Result<(), RuntimeErrors>;
+    fn psi(
+        &self,
+        stream_id: i64,
+        definitions: &SemanticTable,
+    ) -> Result<ExpressionASTNode, RuntimeErrors>;
 }
 
 pub struct BasicRuntime {
@@ -56,5 +73,13 @@ impl Runtime for BasicRuntime {
             .map_err(|err| RuntimeErrors::Io(err))?;
 
         Ok(())
+    }
+
+    fn psi(
+        &self,
+        stream_id: i64,
+        definitions: &SemanticTable,
+    ) -> Result<ExpressionASTNode, RuntimeErrors> {
+        todo!()
     }
 }

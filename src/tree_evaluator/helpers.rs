@@ -4,7 +4,7 @@ use crate::{
     parser::definitions::{
         Atom::{AtomicExpression, Identifier},
         AtomicASTNode, ExpressionASTNode,
-        Expressions::{self, Abstraction, Application, PhiAbstraction},
+        Expressions::{self, Abstraction, Application, PhiAbstraction, PsiAbstraction},
     },
     semantic_analyser::definitions::SemanticTable,
 };
@@ -31,6 +31,9 @@ pub fn get_free_inner(expression: &Expressions, semantics: &SemanticTable) -> Ha
             variables.remove(&abstraction.identifier.name);
             variables
         }
+        // input abstractions are really just placeholders until replaced by actual lambda abstractions
+        // so just return an empty hashset
+        PsiAbstraction(_) => HashSet::new(),
         Application(application) => {
             let mut variables = free_variables_atomic(&application.left, &semantics);
 
@@ -75,6 +78,9 @@ pub fn get_all_names_inner(expression: &Expressions, hash: &mut HashSet<String>)
             hash.insert(abstraction.identifier.name.clone());
             get_all_names_inner(&abstraction.expression, hash)
         }
+        // input abstractions are really just placeholders until replaced by actual lambda abstractions
+        // so no need to do anything with them
+        PsiAbstraction(_) => {}
         Application(application) => {
             collect_all_atomic_names(&application.left, hash);
 
@@ -160,6 +166,9 @@ pub fn replace_in_expression(expression: &mut Expressions, old: &str, new: &str)
 
             replace_in_expression(&mut abstraction.expression, old, new);
         }
+        // input abstractions are really just placeholders until replaced by actual lambda abstractions
+        // so no need to do anything with them
+        PsiAbstraction(_) => {}
         Application(application) => {
             replace_in_atomic(&mut application.left, old, new);
 
@@ -227,6 +236,9 @@ pub fn rename_conflicting_binders(
                 name_generator,
             );
         }
+        // input abstractions are really just placeholders until replaced by actual lambda abstractions
+        // so no need to do anything with them
+        PsiAbstraction(_) => {}
         Application(application) => {
             rename_conflicting_binders_in_atomic(
                 &mut application.left,

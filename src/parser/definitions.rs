@@ -46,6 +46,7 @@ pub struct IdentifierASTNode {
 pub enum Expressions {
     Abstraction(AbstractionASTNode),
     PhiAbstraction(PhiAbstractionASTNode),
+    PsiAbstraction(PsiAbstractionASTNode),
     Application(ApplicationASTNode),
 }
 
@@ -60,6 +61,11 @@ pub struct PhiAbstractionASTNode {
     pub communication_stream_id: i64,
     pub identifier: IdentifierASTNode,
     pub expression: Box<Expressions>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PsiAbstractionASTNode {
+    pub communication_stream_id: i64,
 }
 
 #[derive(Debug, Clone)]
@@ -86,6 +92,7 @@ pub enum ParserErrors {
     InvalidExpression { location: SourceLocation },
     InvalidAbstraction { location: SourceLocation },
     InvalidPhiAbstraction { location: SourceLocation },
+    InvalidPsiAbstraction { location: SourceLocation },
     InvalidAtomic { location: SourceLocation },
     InvalidIdentifier { location: SourceLocation },
     ExpectedDotToken { location: SourceLocation },
@@ -146,6 +153,14 @@ impl fmt::Display for ParserErrors {
                 write!(
                     f,
                     "Invalid phi abstraction at line {}, column {}",
+                    location.get_line() + 1,
+                    location.get_columm() + 1
+                )
+            }
+            ParserErrors::InvalidPsiAbstraction { location } => {
+                write!(
+                    f,
+                    "Invalid psi abstraction at line {}, column {}",
                     location.get_line() + 1,
                     location.get_columm() + 1
                 )
@@ -337,6 +352,23 @@ impl<'ast> Visitable<'ast> for PhiAbstractionASTNode {
         visitor.visit_phi_abstraction(self)
     }
 }
+
+impl<'ast> Visitable<'ast> for PsiAbstractionASTNode {
+    fn accept<V, R, E>(&'ast self, visitor: &mut V) -> Result<R, E>
+    where
+        V: crate::visitor::definitons::Visitor<'ast, R, E>,
+    {
+        visitor.visit_psi_abstraction(self)
+    }
+
+    fn accept_mut<V, R, E>(&'ast mut self, visitor: &mut V) -> Result<R, E>
+    where
+        V: visitor::definitons::MutableVisitor<'ast, R, E>,
+    {
+        visitor.visit_psi_abstraction(self)
+    }
+}
+
 impl<'ast> Visitable<'ast> for ApplicationASTNode {
     fn accept<V, R, E>(&'ast self, visitor: &mut V) -> Result<R, E>
     where

@@ -5,13 +5,13 @@ use crate::{
         definitions::{
             Atom::{AtomicExpression, Identifier},
             AtomicASTNode, ExpressionASTNode,
-            Expressions::{self, Abstraction, Application, PhiAbstraction},
+            Expressions::{self, Abstraction, Application, PhiAbstraction, PsiAbstraction},
             ProgramASTNode,
             Statemets::{Definition, ImportStatement, StatementExpression},
         },
         runtime_abstractions::AbstractionReducable,
     },
-    runtime::definitions::{Runtime, RuntimeErrors},
+    runtime::definitions::{InputReducable, Runtime, RuntimeErrors},
     semantic_analyser::definitions::SemanticTable,
     tree_evaluator::helpers::{
         NameGenerator, free_variables_atomic, get_free_variables, rename_conflicting_binders,
@@ -98,6 +98,11 @@ pub fn reduce_expression_once<R: Runtime>(
                 runtime,
             )?
         }
+        PsiAbstraction(abstraction) => {
+            let replacement = reduce_input_once(abstraction, definitions, runtime)?;
+            expression.expression = replacement.expression;
+            modified = true;
+        }
         Application(_) => {
             modified = reduce_application_once(
                 &mut expression.expression,
@@ -130,6 +135,11 @@ pub fn reduce_abstraction_once<T: AbstractionReducable, R: Runtime>(
         PhiAbstraction(inner) => {
             reduce_abstraction_once(inner, definitions, bound_variables, name_generator, runtime)
         }
+        PsiAbstraction(inner) => {
+            let replacement = reduce_input_once(inner, definitions, runtime)?;
+            *abstraction.expression_mut() = replacement.expression;
+            Ok(true)
+        }
         Application(_) => reduce_application_once(
             abstraction.expression_mut(),
             definitions,
@@ -145,6 +155,14 @@ pub fn reduce_abstraction_once<T: AbstractionReducable, R: Runtime>(
         bound_variables.remove(&name);
     }
     modified
+}
+
+pub fn reduce_input_once<T: InputReducable, R: Runtime>(
+    abstraction: &mut T,
+    definitions: &SemanticTable,
+    runtime: &mut R,
+) -> Result<ExpressionASTNode, RuntimeErrors> {
+    abstraction.input_reduce(definitions, runtime)
 }
 
 // probbably the most important function since beta reduction happens here
@@ -224,7 +242,9 @@ pub fn reduce_application_once<R: Runtime>(
                     )
                 }
             }
-            _ => None,
+            //phi os not beta reduced
+            PsiAbstraction(_) => None,
+            Application(_) => None,
         },
         _ => None,
     };
@@ -310,6 +330,8 @@ pub fn substitute_expression(
                 name_generator,
             );
         }
+        // no function body nothing to substitute
+        PsiAbstraction(_) => {}
         Application(application) => {
             substitute_atomic(
                 &mut application.left,
