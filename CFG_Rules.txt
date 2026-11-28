@@ -14,7 +14,7 @@ runtime_abstraction ::= output_abstraction | input_abstraction
 
 output_abstraction ::= "phi" "(" Integer ")" Identifier "." expression
 
-input_abstraction ::= "psi" "(" Integer ")" Identifier "." expression
+input_abstraction ::= "psi" "(" Integer ")"
 
 application ::= atom atom*
 
