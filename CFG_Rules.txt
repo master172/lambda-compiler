@@ -1,6 +1,6 @@
 our context free grammer rules
 
-program ::= statemet* EOF
+program ::= statement* EOF
 
 statement ::= definition ";" | expression ";" | "import" Identifier ";"
 
